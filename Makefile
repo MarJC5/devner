@@ -46,19 +46,19 @@ mysql8:
 
 mysql5:
 	@echo "${GREEN}Running mysql 5.7 ...${RESET}"
-	@${DOCKER} exec mysql_5 bash
+	@${DOCKER} exec mysql_5 sh
 
 node20:
 	@echo "${GREEN}Running nodejs 20 ...${RESET}"
-	@${DOCKER} exec node_20 bash
+	@${DOCKER} exec node_20 sh
 
 node18:
 	@echo "${GREEN}Running nodejs 18 ...${RESET}"
-	@${DOCKER} exec node_18 bash
+	@${DOCKER} exec node_18 sh
 
 node16:
 	@echo "${GREEN}Running nodejs 16 ...${RESET}"
-	@${DOCKER} exec node_16 bash
+	@${DOCKER} exec node_16 sh
 
 php82:
 	@echo "${GREEN}Running php 8.2 ...${RESET}"

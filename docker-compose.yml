@@ -50,6 +50,7 @@ services:
     volumes:
       # mount your MySQL 8 data directory
       - ./services/mysql/8:/var/lib/mysql
+      - ./services/mysql/scripts/create.sh:/create.sh
     environment:
       MYSQL_USER: homestead
       MYSQL_PASSWORD: secret
@@ -68,6 +69,7 @@ services:
     volumes:
       # mount your MySQL 5.7 data directory
       - ./services/mysql/5:/var/lib/mysql
+      - ./services/mysql/scripts/create.sh:/create.sh
     environment:
       MYSQL_USER: homestead
       MYSQL_PASSWORD: secret
@@ -80,6 +82,7 @@ services:
     container_name: node20
     restart: unless-stopped
     command: tail -f /dev/null
+    working_dir: /home/dev/apps/
     volumes:
       # mount your Node.js 20 projects
       - ./projects:/home/dev/apps/
@@ -90,6 +93,7 @@ services:
     container_name: node18
     restart: unless-stopped
     command: tail -f /dev/null
+    working_dir: /home/dev/apps/
     volumes:
       # mount your Node.js 18 projects
       - ./projects:/home/dev/apps/
@@ -100,6 +104,7 @@ services:
     container_name: node16
     restart: unless-stopped
     command: tail -f /dev/null
+    working_dir: /home/dev/apps/
     volumes:
       # mount your Node.js 16 projects
       - ./projects:/home/dev/apps/

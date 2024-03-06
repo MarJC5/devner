@@ -1,8 +1,8 @@
-#mysql/5
-#mysql/8
+services/mysql/5/
+services/mysql/8
 
-#nginx/sites-enabled/
+services/nginx/sites-enabled/
 
-#projects/
+projects/
 
 .DS_Store
