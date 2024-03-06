@@ -40,18 +40,21 @@ delete:
 	@echo "${RED}Deleting containers...${RESET}"
 	@${DOCKER} down -v --remove-orphans
 
+nginx:
+	@echo "${GREEN}Running nginx ...${RESET}"
+	@${DOCKER} exec nginx sh
+
 mysql8:
 	@echo "${GREEN}Running mysql 8 ...${RESET}"
 	@${DOCKER} exec mysql_8 bash
 
 mysql5:
 	@echo "${GREEN}Running mysql 5.7 ...${RESET}"
-	@${DOCKER} exec mysql_5 sh
+	@${DOCKER} exec mysql_5 bash
 
 node:
 	@echo "${GREEN}Running nodejs ...${RESET}"
 	@${DOCKER} exec node bash
-
 
 php82:
 	@echo "${GREEN}Running php 8.2 ...${RESET}"

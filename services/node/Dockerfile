@@ -28,6 +28,9 @@ RUN . "$NVM_DIR/nvm.sh" && nvm alias default $NODE_VERSION_20
 # Verify installation
 RUN . "$NVM_DIR/nvm.sh" && nvm use $NODE_VERSION_20 && node --version
 
+# Install yarn
+RUN . "$NVM_DIR/nvm.sh" && npm install -g yarn
+
 # Copy your application source
 WORKDIR /home/dev/apps/
 
