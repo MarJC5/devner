@@ -26,9 +26,7 @@ services:
       - php_8_1
       - php_8
       - php_7_4
-      - node_20
-      - node_18
-      - node_16
+      - node
 
   mailhog:
     image: mailhog/mailhog
@@ -77,36 +75,26 @@ services:
       SERVICE_TAGS: dev
       SERVICE_NAME: mysql_5
 
-  node_20:
-    image: node:20-alpine3.18
-    container_name: node20
+  adminer:
+    image: adminer:latest
     restart: unless-stopped
-    command: tail -f /dev/null
-    working_dir: /home/dev/apps/
-    volumes:
-      # mount your Node.js 20 projects
-      - ./projects:/home/dev/apps/
-      - /etc/localtime:/etc/localtime:ro
+    container_name: adminer_devner
+    ports:
+      - '8080:8080'
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql_5
 
-  node_18:
-    image: node:18-alpine3.18
-    container_name: node18
+  node:
+    build:
+      context: ./services/node
+      dockerfile: Dockerfile
+    container_name: node_devner
     restart: unless-stopped
-    command: tail -f /dev/null
-    working_dir: /home/dev/apps/
+    ports:
+      - '3000:3000'
+      - '5173:5173'
     volumes:
-      # mount your Node.js 18 projects
-      - ./projects:/home/dev/apps/
-      - /etc/localtime:/etc/localtime:ro
-
-  node_16:
-    image: node:16-alpine3.18
-    container_name: node16
-    restart: unless-stopped
-    command: tail -f /dev/null
-    working_dir: /home/dev/apps/
-    volumes:
-      # mount your Node.js 16 projects
+      # mount your Node.js projects
       - ./projects:/home/dev/apps/
       - /etc/localtime:/etc/localtime:ro
 

@@ -48,17 +48,10 @@ mysql5:
 	@echo "${GREEN}Running mysql 5.7 ...${RESET}"
 	@${DOCKER} exec mysql_5 sh
 
-node20:
-	@echo "${GREEN}Running nodejs 20 ...${RESET}"
-	@${DOCKER} exec node_20 sh
+node:
+	@echo "${GREEN}Running nodejs ...${RESET}"
+	@${DOCKER} exec node bash
 
-node18:
-	@echo "${GREEN}Running nodejs 18 ...${RESET}"
-	@${DOCKER} exec node_18 sh
-
-node16:
-	@echo "${GREEN}Running nodejs 16 ...${RESET}"
-	@${DOCKER} exec node_16 sh
 
 php82:
 	@echo "${GREEN}Running php 8.2 ...${RESET}"
@@ -84,4 +77,4 @@ reload:
 	@echo "${GREEN}Reloading nginx...${RESET}"
 	@${DOCKER} exec nginx nginx -s reload
 
-.PHONY: all up down stop rebuild delete mysql8 mysql5 node20 node18 node16 php82 php81 php8 php74
+.PHONY: all up down stop rebuild delete mysql8 mysql5 node php82 php81 php8 php74
