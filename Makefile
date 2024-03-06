@@ -76,4 +76,12 @@ php74:
 	@echo "${GREEN}Running php 7.4 ...${RESET}"
 	@${DOCKER} exec php_7_4 bash
 
+host:
+	@echo "${GREEN}Adding host...${RESET}"
+	@./services/nginx/scripts/host.sh
+
+reload:
+	@echo "${GREEN}Reloading nginx...${RESET}"
+	@${DOCKER} exec nginx nginx -s reload
+
 .PHONY: all up down stop rebuild delete mysql8 mysql5 node20 node18 node16 php82 php81 php8 php74

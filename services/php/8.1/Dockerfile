@@ -40,6 +40,7 @@ RUN apk add --no-cache zip libzip-dev
 RUN docker-php-ext-configure zip
 RUN docker-php-ext-install zip
 RUN docker-php-ext-install exif
+RUN docker-php-ext-install mysqli
 RUN apk --no-cache add pcre-dev ${PHPIZE_DEPS} && pecl install redis && docker-php-ext-enable redis
 
 WORKDIR /home/dev/apps
