@@ -26,9 +26,7 @@ To set the virutal host, see the `./services/nginx/default/virtual-host-template
 - `make stop` - Stop all containers
 - `make mysql8` - Access the MySQL 8 container
 - `make mysql5` - Access the MySQL 5 container
-- `make node20` - Access the Node 20 container
-- `make node18` - Access the Node 18 container
-- `make node16` - Access the Node 16 container
+- `make node` - Access the Node container (nvm to use multiple node versions)
 - `make php82` - Access the PHP 8.2 container
 - `make php81` - Access the PHP 8.1 container
 - `make php80` - Access the PHP 8.0 container
