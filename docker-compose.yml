@@ -1,0 +1,150 @@
+version: '3.8'
+
+networks:
+  default:
+    name: devner
+
+services:
+  nginx:
+    image: nginx:1.23.0-alpine
+    ports:
+      - '80:80'
+    command: nginx -g 'daemon off;'
+    volumes:
+      # load nginx config
+      - ./services/nginx/config/nginx.conf:/etc/nginx/nginx.conf
+      - ./services/nginx/config/default.conf:/etc/nginx/conf.d/default.conf
+      - ./services/nginx/config/php.conf:/etc/nginx/php.conf
+      # mount your nginx project virtual hosts
+      - ./services/nginx/sites-enabled:/etc/nginx/sites-enabled
+      # mount your project directories to connect them with nginx
+      - ./projects/:/home/dev/apps/
+      # mount your system's local timezone settings (for WSL2, Linux distros)
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - php_8_2
+      - php_8_1
+      - php_8
+      - php_7_4
+      - node_20
+      - node_18
+      - node_16
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog_devner
+    logging:
+      driver: 'none'
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
+  mysql_8:
+    image: mysql:8.0.28
+    restart: unless-stopped
+    tty: true
+    container_name: mysql8
+    platform: "linux/x86_64"
+    ports:
+      - '33080:3306'
+    volumes:
+      # mount your MySQL 8 data directory
+      - ./services/mysql/8:/var/lib/mysql
+    environment:
+      MYSQL_USER: homestead
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: secret
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql_8
+
+  mysql_5:
+    image: mysql:5.7.37
+    restart: unless-stopped
+    tty: true
+    container_name: mysql5
+    platform: "linux/x86_64"
+    ports:
+      - '33057:3306'
+    volumes:
+      # mount your MySQL 5.7 data directory
+      - ./services/mysql/5:/var/lib/mysql
+    environment:
+      MYSQL_USER: homestead
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: secret
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql_5
+
+  node_20:
+    image: node:20-alpine3.18
+    container_name: node20
+    restart: unless-stopped
+    command: tail -f /dev/null
+    volumes:
+      # mount your Node.js 20 projects
+      - ./projects:/home/dev/apps/
+      - /etc/localtime:/etc/localtime:ro
+
+  node_18:
+    image: node:18-alpine3.18
+    container_name: node18
+    restart: unless-stopped
+    command: tail -f /dev/null
+    volumes:
+      # mount your Node.js 18 projects
+      - ./projects:/home/dev/apps/
+      - /etc/localtime:/etc/localtime:ro
+
+  node_16:
+    image: node:16-alpine3.18
+    container_name: node16
+    restart: unless-stopped
+    command: tail -f /dev/null
+    volumes:
+      # mount your Node.js 16 projects
+      - ./projects:/home/dev/apps/
+      - /etc/localtime:/etc/localtime:ro
+
+  php_8_2:
+    build:
+      context: ./services/php/8.2
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: php82
+    volumes:
+      # mount your PHP 8.2 projects
+      - ./projects:/home/dev/apps/
+      - /etc/localtime:/etc/localtime:ro
+
+  php_8_1:
+    build:
+      context: ./services/php/8.1
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    container_name: php81
+    volumes:
+      # mount your PHP 8.1 projects
+      - ./projects:/home/dev/apps/
+      - /etc/localtime:/etc/localtime:ro
+
+  php_8:
+    build:
+      context: ./services/php/8.0
+      dockerfile: Dockerfile
+    container_name: php8
+    restart: unless-stopped
+    volumes:
+      # mount your PHP 8.0 projects
+      - ./projects:/home/dev/apps/
+      - /etc/localtime:/etc/localtime:ro
+
+  php_7_4:
+    build:
+      context: ./services/php/7.4
+      dockerfile: Dockerfile
+    container_name: php74
+    restart: unless-stopped
+    volumes:
+      # mount your PHP 7.4 projects
+      - ./projects:/home/dev/apps/
+      - /etc/localtime:/etc/localtime:ro
