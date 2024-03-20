@@ -96,7 +96,7 @@ services:
       - '3000:3000'
       - '5173:5173'
     extra_hosts:
-      - "api.nexelar.local:172.23.0.11"
+      - "api.local:172.0.0.1" # replace with your nginx server IP in your local network
     volumes:
       # mount your Node.js projects
       - ./projects:/home/dev/apps/

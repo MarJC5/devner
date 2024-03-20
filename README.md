@@ -53,4 +53,6 @@ Run these commands from the root of the cloned repository:
   - `./devner.sh host` - Add a new host entry to `/etc/hosts` and create a new virtual host.
   - `./devner.sh reload` - Reload Nginx configuration without restarting the container.
   - `./devner.sh code` - Open a project in Visual Studio Code by listing available projects in the `projects` folder. Select a project by entering the corresponding number when prompted.
+  - `./devner.sh add-alias` - Add an alias to the `./devner.sh` script for easier access.
+  - `./devner.sh ps` - Check the status of the Docker containers.
   
