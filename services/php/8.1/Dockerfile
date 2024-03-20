@@ -21,6 +21,7 @@ RUN apk update && apk upgrade && \
     apk add --no-cache bash git openssh
 
 RUN apk add --no-cache \
+      vim \
       freetype \
       libjpeg-turbo \
       libpng \

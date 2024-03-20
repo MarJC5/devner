@@ -2,6 +2,7 @@ services/mysql/5/
 services/mysql/8
 
 services/nginx/sites-enabled/
+services/nginx/config/default.conf
 
 projects/
 

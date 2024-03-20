@@ -19,6 +19,7 @@ RUN docker-php-ext-install pdo pdo_mysql
 
 RUN apk add --update \
 		$PHPIZE_DEPS \
+		vim \
 		freetype-dev \
 		git \
 		libjpeg-turbo-dev \

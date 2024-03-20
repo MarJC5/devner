@@ -21,6 +21,7 @@ RUN apk update && apk upgrade && \
     apk add --no-cache bash git openssh
 
 RUN apk add --no-cache \
+      vim \
       freetype \
       libjpeg-turbo \
       libpng \
@@ -45,8 +46,6 @@ RUN apk --no-cache add pcre-dev ${PHPIZE_DEPS} && pecl install redis && docker-p
 WORKDIR /home/dev/apps
 
 RUN chown -R www-data:www-data /home/dev/apps
-
-ADD php.ini /usr/local/etc/php/php.ini
 
 USER dev
 

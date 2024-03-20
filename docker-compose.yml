@@ -21,6 +21,8 @@ services:
       - ./projects/:/home/dev/apps/
       # mount your system's local timezone settings (for WSL2, Linux distros)
       - /etc/localtime:/etc/localtime:ro
+      # mount local etc/hosts file to the container
+      - /etc/hosts:/etc/hosts_local:ro
     depends_on:
       - php_8_2
       - php_8_1
@@ -93,6 +95,8 @@ services:
     ports:
       - '3000:3000'
       - '5173:5173'
+    extra_hosts:
+      - "api.nexelar.local:172.23.0.11"
     volumes:
       # mount your Node.js projects
       - ./projects:/home/dev/apps/

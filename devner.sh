@@ -1,66 +1,68 @@
 #!/bin/bash
 
+# Color Codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
 # FOLDER
 SRCS_DIR=$(cd $(dirname $0); pwd)
+PROJECTS_DIR="${SRCS_DIR}/projects"
 
 # Check if at least one argument is provided
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 <command>"
-    echo "Available commands: up, down, stop, rebuild, delete, nginx, mysql8, mysql5, node, php82, php81, php8, php74, host, reload"
+    echo -e "${YELLOW}Usage: $0 <command>${NC}"
+    echo -e "Available commands: ${GREEN}up, down, stop, rebuild, delete, nginx, mysql8, mysql5, node, php82, php81, php8, php74, host, reload, code${NC}"
     exit 1
 fi
 
 command=$1
 
 case $command in
-    up)
-        make up -C ${SRCS_DIR}
+    up|down|stop|rebuild|delete|nginx|mysql8|mysql5|node|php82|php81|php8|php74|host|reload)
+        echo -e "${GREEN}Executing command: ${command}${NC}"
+        make ${command} -C ${SRCS_DIR}
         ;;
-    down)
-        make down -C ${SRCS_DIR}
-        ;;
-    stop)
-        make stop -C ${SRCS_DIR}
-        ;;
-    rebuild)
-        make rebuild -C ${SRCS_DIR}
-        ;;
-    delete)
-        make delete -C ${SRCS_DIR}
-        ;;
-    nginx)
-        make nginx -C ${SRCS_DIR}
-        ;;
-    mysql8)
-        make mysql8 -C ${SRCS_DIR}
-        ;;
-    mysql5)
-        make mysql5 -C ${SRCS_DIR}
-        ;;
-    node)
-        make node -C ${SRCS_DIR}
-        ;;
-    php82)
-        make php82 -C ${SRCS_DIR}
-        ;;
-    php81)
-        make php81 -C ${SRCS_DIR}
-        ;;
-    php8)
-        make php8 -C ${SRCS_DIR}
-        ;;
-    php74)
-        make php74 -C ${SRCS_DIR}
-        ;;
-    host)
-        make host -C ${SRCS_DIR}
-        ;;
-    reload)
-        make reload -C ${SRCS_DIR}
+    code)
+        echo -e "${BLUE}Available Projects:${NC}"
+        # List all directories (projects) in the PROJECTS_DIR and add them to an array
+        projects=($(ls -d ${PROJECTS_DIR}/*/))
+        for i in "${!projects[@]}"; do
+            project_name=$(basename "${projects[$i]}")
+            echo -e "${YELLOW}$((i+1)))${NC} ${project_name}"
+        done
+
+        # Prompt user for a choice
+        read -p "#? " project_choice
+
+        # Validate the input is a number and within the range of available projects
+        if [[ ! $project_choice =~ ^[0-9]+$ ]] || [ "$project_choice" -lt 1 ] || [ "$project_choice" -gt "${#projects[@]}" ]; then
+            echo -e "${RED}Invalid selection. Please enter a number from the list.${NC}"
+            exit 1
+        fi
+
+        # Adjusting the index to 0-based for array access
+        project_index=$((project_choice-1))
+        project_path="${projects[$project_index]}"
+
+        # Removing the trailing slash from the project_path
+        project_path="${project_path%/}"
+
+        project_name=$(basename "${project_path}")
+        echo -e "${GREEN}Opening ${project_name} in VSCode...${NC}"
+
+        # Start docker container if not running
+        if ! docker ps | grep -q "devner"; then
+            make up -C ${SRCS_DIR}
+        fi
+
+        code "${project_path}"
         ;;
     *)
-        echo "Invalid command: $command"
-        echo "Available commands: up, down, stop, rebuild, delete, nginx, mysql8, mysql5, node, php82, php81, php8, php74, host, reload"
+        echo -e "${RED}Invalid command: ${command}${NC}"
+        echo -e "Available commands: ${GREEN}up, down, stop, rebuild, delete, nginx, mysql8, mysql5, node, php82, php81, php8, php74, host, reload, code${NC}"
         exit 1
         ;;
 esac
