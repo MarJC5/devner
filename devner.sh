@@ -14,7 +14,7 @@ PROJECTS_DIR="${SRCS_DIR}/projects"
 # Check if at least one argument is provided
 if [ $# -eq 0 ]; then
     echo -e "${YELLOW}Usage: $0 <command>${NC}"
-    echo -e "Available commands: ${GREEN}up, down, stop, rebuild, delete, nginx, mysql8, mysql5, node, php82, php81, php8, php74, host, reload, code${NC}"
+    echo -e "Available commands: ${GREEN}up, down, stop, rebuild, delete, nginx, mysql8, mysql5, node, php82, php81, php8, php74, host, reload, code, add-alias${NC}"
     exit 1
 fi
 
@@ -60,9 +60,33 @@ case $command in
 
         code "${project_path}"
         ;;
+    add-alias)
+        # Define the alias command
+        alias_command="alias devner='bash ${SRCS_DIR}/devner.sh'"
+
+        # Add to .bashrc if it exists
+        if [ -f "$HOME/.bashrc" ]; then
+            if ! grep -q "alias devner=" "$HOME/.bashrc"; then
+                echo "$alias_command" >> "$HOME/.bashrc"
+                echo -e "Alias added to ${GREEN}.bashrc${NC}. Restart your terminal or source .bashrc to use it."
+            else
+                echo -e "Alias ${YELLOW}devner${NC} already exists in .bashrc."
+            fi
+        fi
+
+        # Add to .zshrc if it exists
+        if [ -f "$HOME/.zshrc" ]; then
+            if ! grep -q "alias devner=" "$HOME/.zshrc"; then
+                echo "$alias_command" >> "$HOME/.zshrc"
+                echo -e "Alias added to ${GREEN}.zshrc${NC}. Restart your terminal or source .zshrc to use it."
+            else
+                echo -e "Alias ${YELLOW}devner${NC} already exists in .zshrc."
+            fi
+        fi
+        ;;
     *)
         echo -e "${RED}Invalid command: ${command}${NC}"
-        echo -e "Available commands: ${GREEN}up, down, stop, rebuild, delete, nginx, mysql8, mysql5, node, php82, php81, php8, php74, host, reload, code${NC}"
+        echo -e "Available commands: ${GREEN}up, down, stop, rebuild, delete, nginx, mysql8, mysql5, node, php82, php81, php8, php74, host, reload, code, add-alias${NC}"
         exit 1
         ;;
 esac
