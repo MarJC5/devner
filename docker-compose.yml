@@ -96,7 +96,7 @@ services:
       - '3000:3000'
       - '5173:5173'
     extra_hosts:
-      - "api.local:172.0.0.1" # replace with your nginx server IP in your local network
+      - "api.nexelar.local:172.23.0.11"
     volumes:
       # mount your Node.js projects
       - ./projects:/home/dev/apps/
@@ -119,6 +119,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     container_name: php81
+    extra_hosts:
+      - "nexelar.local:172.23.0.6"
     volumes:
       # mount your PHP 8.1 projects
       - ./projects:/home/dev/apps/
