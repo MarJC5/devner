@@ -54,23 +54,23 @@ mysql5:
 
 node:
 	@echo "${GREEN}Running nodejs ...${RESET}"
-	@${DOCKER} exec node bash
+	@${DOCKER} exec -w /home/dev/apps/${project_dir} node bash
 
 php82:
 	@echo "${GREEN}Running php 8.2 ...${RESET}"
-	@${DOCKER} exec php_8_2 bash
+	@${DOCKER} exec -w /home/dev/apps/${project_dir} php_8_2 bash
 
 php81:
 	@echo "${GREEN}Running php 8.1 ...${RESET}"
-	@${DOCKER} exec php_8_1 bash
+	@${DOCKER} exec -w /home/dev/apps/${project_dir} php_8_1 bash
 
 php8:
 	@echo "${GREEN}Running php 8.0 ...${RESET}"
-	@${DOCKER} exec php_8 bash
+	@${DOCKER} exec -w /home/dev/apps/${project_dir} php_8 bash
 
 php74:
 	@echo "${GREEN}Running php 7.4 ...${RESET}"
-	@${DOCKER} exec php_7_4 bash
+	@${DOCKER} exec -w /home/dev/apps/${project_dir} php_7_4 bash
 
 host:
 	@echo "${GREEN}Adding host...${RESET}"
@@ -79,6 +79,10 @@ host:
 reload:
 	@echo "${GREEN}Reloading nginx...${RESET}"
 	@${DOCKER} exec nginx nginx -s reload
+
+nginx-restart:
+	@echo "${GREEN}Restarting nginx...${RESET}"
+	@${DOCKER} exec nginx service nginx restart
 
 new-wp:
 	@echo "${GREEN}Creating new wordpress project...${RESET}"

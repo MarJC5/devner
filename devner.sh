@@ -55,7 +55,32 @@ command=$1
 case $command in
     up|down|stop|rebuild|delete|nginx|mysql8|mysql5|node|php82|php81|php8|php74|host|reload)
         echo -e "${GREEN}Executing command: ${command}${NC}"
-        make ${command} -C ${SRCS_DIR}
+
+        current_dir=""
+        current_pwd=$(pwd)
+        # only keep the last part of the path
+        current_basename=$(basename $current_pwd)
+
+        # Check if the current directory match one of the projects, i yes pass it to the make command
+        for project in ${PROJECTS_DIR}/*/; do
+            project_basename=$(basename "$project")
+            if [ "$current_basename" = "$project_basename" ]; then
+                # check if it's a wordpress project
+                if [ -f "$project/wp-config.php" ]; then
+                    current_dir="$(basename "$project")/wp-content/themes"
+                else 
+                    current_dir="$(basename "$project")"
+                fi
+                break
+            fi
+        done
+
+        # Check if $current_dir is not empty
+        if [ -n "$current_dir" ]; then
+            make $command -C ${SRCS_DIR} project_dir=${current_dir}
+        else
+            make $command -C ${SRCS_DIR}
+        fi
         ;;
     ps)
         # Check if the devner container is running
