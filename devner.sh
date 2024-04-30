@@ -39,6 +39,9 @@ show_help() {
     echo -e "${YELLOW}- code${NC} - Open a project in Visual Studio Code by listing available projects."
     echo -e "${YELLOW}- add-alias${NC} - Add an alias to .bashrc and .zshrc for easy script execution."
     echo -e "${YELLOW}- ps${NC} - Check if the devner container is running and start it if not.\n"
+
+    echo -e "${BLUE}New projectCommands:${NC}"
+    echo -e "${YELLOW}- new <laravel/wp> <project name>${NC} - Create a new Laravel or WordPress project.\n"
 }
 
 # Check if at least one argument is provided
@@ -125,6 +128,29 @@ case $command in
                 echo -e "Alias ${YELLOW}devner${NC} already exists in .zshrc."
             fi
         fi
+        ;;
+    new)
+        if [ $# -lt 3 ]; then
+            echo -e "${RED}Please provide the type of project (laravel/wp) and the project name.${NC}"
+            exit 1
+        fi
+
+        project_type=$2
+        project_name=$3
+
+        case $project_type in
+            laravel)
+                make new-laravel -C ${SRCS_DIR} project_name=${project_name}
+                ;;
+            wp)
+                make new-wp -C ${SRCS_DIR} project_name=${project_name}
+                ;;
+            *)
+                echo -e "${RED}Invalid project type${NC}: ${project_type}"
+                echo -e "Please provide either ${YELLOW}laravel${NC} or ${YELLOW}wp${NC} as the project type."
+                exit 1
+                ;;
+        esac
         ;;
     help)
         show_help

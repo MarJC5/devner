@@ -80,4 +80,12 @@ reload:
 	@echo "${GREEN}Reloading nginx...${RESET}"
 	@${DOCKER} exec nginx nginx -s reload
 
+new-wp:
+	@echo "${GREEN}Creating new wordpress project...${RESET}"
+	@$(DOCKER) exec php_8_2 bash -c "wp core download --path=${project_name} --locale=fr_FR --allow-root"
+
+new-laravel:
+	@echo "${GREEN}Creating new laravel project...${RESET}"
+	@$(DOCKER) exec php_8_2 bash -c "composer create-project --prefer-dist laravel/laravel ${project_name}"
+
 .PHONY: all up down stop rebuild delete mysql8 mysql5 node php82 php81 php8 php74

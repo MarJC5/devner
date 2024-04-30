@@ -55,4 +55,6 @@ Run these commands from the root of the cloned repository:
   - `./devner.sh code` - Open a project in Visual Studio Code by listing available projects in the `projects` folder. Select a project by entering the corresponding number when prompted.
   - `./devner.sh add-alias` - Add an alias to the `./devner.sh` script for easier access.
   - `./devner.sh ps` - Check the status of the Docker containers.
+- New project setup:
+  - `./devner.sh new <laravel/wp> <project-name>` - Create a new Laravel or WordPress project in the `projects` folder.
   
