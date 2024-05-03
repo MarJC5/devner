@@ -53,7 +53,7 @@ fi
 command=$1
 
 case $command in
-    up|down|stop|rebuild|delete|nginx|mysql8|mysql5|node|php82|php81|php8|php74|host|reload)
+    up|down|stop|rebuild|delete|nginx|mysql8|mysql5|node|php82|php81|php8|php74|host|reload|nginx-restart)
         echo -e "${GREEN}Executing command: ${command}${NC}"
 
         current_dir=""

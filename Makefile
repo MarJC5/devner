@@ -82,7 +82,7 @@ reload:
 
 nginx-restart:
 	@echo "${GREEN}Restarting nginx...${RESET}"
-	@${DOCKER} exec nginx service nginx restart
+	@${DOCKER} restart nginx
 
 new-wp:
 	@echo "${GREEN}Creating new wordpress project...${RESET}"
