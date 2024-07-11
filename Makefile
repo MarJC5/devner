@@ -48,6 +48,22 @@ delete:
 	@echo "${RED}Deleting containers...${RESET}"
 	@${DOCKER} down -v --remove-orphans
 
+node:
+	@echo "${GREEN}Entering node container...${RESET}"
+	@${DOCKER} exec node bash
+
+frankenphp:
+	@echo "${GREEN}Entering frankenphp container...${RESET}"
+	@${DOCKER} exec frankenphp bash
+
+mysql8:
+	@echo "${GREEN}Entering mysql8 container...${RESET}"
+	@${DOCKER} exec mysql8 bash
+
+mysql5:
+	@echo "${GREEN}Entering mysql5 container...${RESET}"
+	@${DOCKER} exec mysql5 bash
+
 nuxt:
 	@echo "${GREEN}Entering nuxt container...${RESET}"
 	@${DOCKER} exec gui bash
