@@ -1,0 +1,17 @@
+{
+ # Activer FrankenPHP
+ frankenphp
+ # Configurer l'ordre d'exécution de la directive
+ order php_server before file_server
+}
+
+localhost {
+    reverse_proxy /api/* gui:3000
+    reverse_proxy /* gui:3000
+}
+
+lamuette.local {
+    root  /var/www/html/lamuette
+    file_server
+    php_server
+}

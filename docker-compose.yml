@@ -1,0 +1,92 @@
+networks:
+  default:
+    name: devner
+
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit_devner
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
+  gui:
+    image: node:lts
+    container_name: devner-gui
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./gui:/app
+      - ~/.nuxtrc:/root/.nuxtrc
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: tail -f /dev/null
+    working_dir: /app
+
+  frankenphp:
+    build:
+      context: .
+      dockerfile: ./services/frankenphp/Dockerfile
+    container_name: frankenphp_devner
+    ports:
+      - "80:80" # HTTP
+      - "443:443" # HTTPS
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+      - ./projects:/var/www/html/
+      - ./gui:/var/www/html/gui
+      - ./services/frankenphp/Caddyfile:/etc/caddy/Caddyfile
+      - ./services/frankenphp/config/php.ini:/usr/local/etc/php/php.ini
+    tty: true
+    depends_on:
+      - mysql_8
+      - mailpit
+      - gui
+
+  mysql_8:
+    image: mysql:8.4
+    restart: unless-stopped
+    tty: true
+    container_name: mysql8_devner
+    platform: "linux/x86_64"
+    ports:
+      - '3306:3306'
+    volumes:
+      - ./services/mysql/scripts/create.sh:/create.sh
+      - mysql8_data:/var/lib/mysql
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: "Europe/Zurich"
+
+  mysql_5:
+    image: mysql:5.7
+    restart: unless-stopped
+    tty: true
+    container_name: mysql5_devner
+    platform: "linux/x86_64"
+    ports:
+      - '3307:3306'
+    volumes:
+      - ./services/mysql/scripts/create.sh:/create.sh
+      - mysql5_data:/var/lib/mysql
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: "Europe/Zurich"
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    container_name: adminer_devner
+    ports:
+      - '8080:8080'
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql_8
+
+volumes:
+  mysql8_data:
+  mysql5_data:
