@@ -6,6 +6,6 @@ export default defineEventHandler(async (event) => {
     }
 
     const { id } = event.context.params;
-    const container = await dockerService.getContainer(id);
+    const container = await dockerService.getContainerDetail(id);
     return container;
 });

@@ -3,6 +3,11 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-04-03',
   extends: ['@nuxt/ui-pro'],
   modules: ['@nuxt/ui'],
+  nitro: {
+    experimental: {
+      websocket: true
+    }
+  },
   colorMode: {
     preference: 'light'
   },

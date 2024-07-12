@@ -12,9 +12,8 @@ DOCKER_DIR	= ${SRCS_DIR}docker-compose.yml
 # VARIABLES
 ENV_FILE	= ${SRCS_DIR}.env
 
-
 # COMMANDS
-DOCKER		=  docker compose -f ${DOCKER_DIR} --env-file ${ENV_FILE} -p devner
+DOCKER		=  docker compose -f ${DOCKER_DIR} -p devner
 
 %:
 	@:
@@ -58,7 +57,7 @@ frankenphp:
 
 mysql8:
 	@echo "${GREEN}Entering mysql8 container...${RESET}"
-	@${DOCKER} exec mysql8 bash
+	@${DOCKER} exec mysql_8 bash
 
 mysql5:
 	@echo "${GREEN}Entering mysql5 container...${RESET}"
@@ -68,12 +67,16 @@ nuxt:
 	@echo "${GREEN}Entering nuxt container...${RESET}"
 	@${DOCKER} exec gui bash
 
-nuxt-start:
+gui-dev:
 	@echo "${GREEN}Entering nuxt container...${RESET}"
-	@${DOCKER} exec gui bash -c "yarn start"
+	@${DOCKER} exec gui bash -c "yarn dev"
 
-nuxt-prod:
+gui-build:
 	@echo "${GREEN}Entering nuxt container...${RESET}"
 	@${DOCKER} exec gui bash -c "yarn build"
+
+gui:
+	@echo "${GREEN}Entering nuxt container...${RESET}"
+	@${DOCKER} exec gui bash -c "yarn start"
 
 .PHONY: all start up down stop rebuild delete

@@ -72,7 +72,6 @@
   </UPageHeader>
   <div v-if="container">
     <div>
-      <p>Status: {{ container.getStatus() }}</p>
       <p>Image: {{ container.getImage() }}</p>
       <p>Created: {{ container.getCreated() }}</p>
       <p>
@@ -84,6 +83,9 @@
         </ul>
       </p>
     </div>
+    <div>
+      <LogViewer :containerId="container.getId()" />
+    </div>
   </div>
   <div v-else>
     <UButton 
@@ -93,13 +95,14 @@
       block
       variant="ghost"
       loading>
-        Loading containers...
+        Loading container...
     </UButton>
   </div>
 </template>
 
 <script setup>
 import Container from "@/models/Container";
+import LogViewer from '@/components/LogViewer.client.vue';
 
 const route = useRoute();
 const container = ref(null);

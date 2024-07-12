@@ -1,7 +1,7 @@
 <template>
   <UPageHeader
     title="Databases"
-    headline="Local Databases"
+    headline="Manage your databases"
     class="mb-4"
   />
 </template>

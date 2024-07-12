@@ -15,6 +15,18 @@ export default {
     },
 
     /**
+     * Get logs of a container by its id
+     * 
+     * @param {string} containerId
+     * @param {object} options
+     * @returns {Promise<string>}
+     */
+    getContainerLogs(containerId, options = {follow: true, stdout: true, stderr: true, since: 0}) {
+        const container = docker.getContainer(containerId);
+        return container.logs(options);
+    },
+
+    /**
      * Get a container by its id
      * 
      * @param {string} containerId
@@ -99,8 +111,19 @@ export default {
      * @param {string} containerId
      * @returns {Docker.ContainerInfo}
      */
-    getContainer(containerId) {
+    getContainerDetail(containerId) {
         const container = docker.getContainer(containerId);
         return container.inspect();
+    },
+
+    /**
+     * Get a container by its id
+     * 
+     * @param {string} containerId
+     * @returns {Docker.Container}
+     */
+    getContainer(containerId) {
+        const container = docker.getContainer(containerId);
+        return container;
     }
 };

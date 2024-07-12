@@ -1,5 +1,11 @@
 # Folders
 /projects/*/
 
+# Config
+/services/frankenphp/Caddyfile
+
 #  Others
 .DS_Store
+
+# Env
+.env

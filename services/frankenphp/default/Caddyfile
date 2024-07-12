@@ -6,7 +6,6 @@
 }
 
 localhost {
- root  /var/www/html/devner/public
- file_server
- php_server
+    reverse_proxy /api/* gui:3000
+    reverse_proxy /* gui:3000
 }

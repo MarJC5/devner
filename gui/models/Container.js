@@ -21,6 +21,26 @@ class Container {
     };
   }
 
+  static async logs(id, options = {}) {
+    const logStream = await $fetch(`/api/containers/${id}/logs`, {
+      method: "POST",
+      body: JSON.stringify(options),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    logStream.on("data", (chunk) => {
+      return chunk.toString('utf8');
+    });
+
+    logStream.on("end", () => {
+      console.log("Stream ended");
+    });
+
+    logStream.on("error", (error) => {
+      console.error("Stream error:", error);
+    });
+  }
+
   static async fetchContainer(id) {
     const containerData = await $fetch(`/api/containers/${id}/details`, {
       method: "GET",
@@ -28,12 +48,27 @@ class Container {
     return new Container(containerData);
   }
 
+  static async fetchContainerByName(containerName) {
+    try {
+      const containers = await Container.all();
+      return containers.find((container) =>
+        container.name.includes(`/${containerName}`)
+      );
+    } catch (error) {
+      console.error("Error fetching container by name:", error);
+      throw error;
+    }
+  }
+
   static async all() {
     const data = await $fetch(`/api/containers`, { method: "GET" });
     const containers = await Promise.all(
       data.map(async (containerData) => {
         const model = await Container.fetchContainer(containerData.Id);
-        if (model.getNetworks().devner && !model.getName().toLowerCase().includes("gui")) {
+        if (
+          model.getNetworks().devner &&
+          !model.getName().toLowerCase().includes("gui")
+        ) {
           return model;
         }
       })
@@ -85,6 +120,67 @@ class Container {
     this.status = updatedContainer.status;
     this.pid = updatedContainer.pid;
     this.startedAt = updatedContainer.startedAt;
+  }
+
+  /**
+   * Exec a command in the container
+   */
+  async cmd(command, parseAsTable = false, clean = true) {
+    try {
+      const response = await $fetch(`/api/containers/${this.id}/exec`, {
+        method: "POST",
+        body: JSON.stringify({ command }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (response.status === "error") {
+        throw new Error(response.message);
+      }
+
+      // Split the raw output into lines
+      const rawOutput = response.output.split("\n");
+
+      // If parsing as table, handle the parsing
+      if (parseAsTable) {
+        return this.parseTableOutput(rawOutput);
+      }
+
+      // Clean up the output by removing non-printable characters if 'clean' is true
+      if (clean) {
+        return rawOutput
+          .map((line) => line.replace(/[^\x20-\x7E]/g, ""))
+          .filter((line) => line);
+      }
+
+      return rawOutput;
+    } catch (error) {
+      console.error("Error executing command in container:", error);
+      throw error;
+    }
+  }
+
+  parseTableOutput(output) {
+    const [header, ...rows] = output;
+
+    // Split header into columns
+    const headers = header.split("\t").map((h) => h.trim());
+
+    return rows.map((row) => {
+      const columns = row.split("\t").map((c) => c.trim()); // Split by tab characters and trim
+      let rowObject = {};
+      headers.forEach((header, index) => {
+        rowObject[header.replace(/[^\x20-\x7E]/g, "")] = columns[index] || "";
+      });
+      return rowObject;
+    });
+  }
+
+  /**
+   * Get Directories
+   */
+  async getDirectories(path = "/") {
+    const filesAndDirs = await this.cmd(`ls -a ${path}`);
+    return { filesAndDirs, path, count: filesAndDirs.length };
   }
 
   /**
@@ -145,12 +241,16 @@ class Container {
    *
    * @returns {object}
    */
-  getPorts() {
+  getPorts(full = true) {
     const portsArray = [];
     for (const [port, mappings] of Object.entries(this.ports)) {
       if (mappings) {
         mappings.forEach((mapping) => {
-          portsArray.push(`${mapping.HostPort}/${port.split("/")[1]}`);
+          if (full) {
+            portsArray.push(`${mapping.HostPort}/${port.split("/")[1]}`);
+          } else {
+            portsArray.push(mapping.HostPort);
+          }
         });
       }
     }
