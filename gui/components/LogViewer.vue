@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div ref="logContainer" class="h-[75vh] overflow-y-auto mt-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800">
       <div v-for="log in logs" :key="log" class="log-entry">{{ log }}</div>
     </div>
   </template>
@@ -15,6 +15,7 @@
   });
   
   const logs = ref([]);
+  const logContainer = ref(null);
   
   const connectSocket = () => {
     socket.emit('getLogs', props.containerId);
@@ -33,6 +34,13 @@
     logs.value = []; // Clear logs on reconnect to avoid duplicate entries
     connectSocket();
   };
+
+  const scrollToBottom = () => {
+    if (logContainer.value) {
+        logContainer.value.scrollTop = logContainer.value.scrollHeight;
+    }
+    
+};
   
   onMounted(() => {
     connectSocket();
@@ -43,6 +51,8 @@
     socket.on('disconnect', () => {
       console.log('Disconnected from server');
     });
+
+    scrollToBottom();
   });
   
   onBeforeUnmount(() => {
@@ -51,6 +61,10 @@
     socket.off('connect', handleConnect);
   });
   
+  watch(logs, () => {
+        scrollToBottom();
+    });
+
   watch(() => props.containerId, () => {
     logs.value = []; // Clear logs when containerId changes
     connectSocket();

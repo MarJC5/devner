@@ -1,19 +1,21 @@
 <template>
   <UPageHeader
     :headline="container ? '' : 'Loading...'"
-    class="mb-4"
+    class="sticky top-0 bg-white z-10 dark:bg-gray-800 pb-4"
   >
     <template #title>
-        <h1 v-if="container" class="flex">{{ container.getName() }}
-        <UBadge 
+      <h1 v-if="container" class="flex">
+        {{ container.getName() }}
+        <UBadge
           :label="container.getStatus()"
           :color="container.isRunning() ? 'green' : 'red'"
           class="ml-2 h-6"
-          variant="soft"/>
-        </h1>
+          variant="soft"
+        />
+      </h1>
     </template>
     <template #description>
-      <div class="flex flex-wrap gap-4" v-if="container">
+      <div class="flex flex-wrap gap-2" v-if="container">
         <UButton
           @click="() => performContainerAction(container, 'start')"
           v-if="!container.isRunning()"
@@ -71,41 +73,84 @@
     </template>
   </UPageHeader>
   <div v-if="container">
-    <div>
-      <p>Image: {{ container.getImage() }}</p>
-      <p>Created: {{ container.getCreated() }}</p>
-      <p>
-        Ports:
-        <ul>
-          <li v-for="port in container.getPorts()" :key="port">
-            {{ port }}
-          </li>
-        </ul>
-      </p>
-    </div>
-    <div>
-      <LogViewer :containerId="container.getId()" />
-    </div>
+    <UDashboardToolbar class="pl-0 py-4">
+      <template #left>
+        <USelectMenu 
+          :icon="selected === 'General' ? 'i-heroicons-information-circle' : 'i-heroicons-clipboard-document-list'"
+          v-model="selected" 
+          :options="status" 
+          color="white"
+          v-if="selected !== 'Shell'"/>
+        <UButton
+          icon="i-heroicons-command-line"
+          size="sm"
+          color="white"
+          square
+          variant="solid"
+          label="Terminal"
+          v-if="selected !== 'Shell'"
+          @click="enableShell()"
+        />
+        <UButton
+          icon="i-heroicons-arrow-right-on-rectangle"
+          size="sm"
+          color="white"
+          square
+          variant="solid"
+          label="Quit"
+          v-if="selected === 'Shell'"
+          @click="leaveShell()"
+        />
+      </template>
+    </UDashboardToolbar>
+        <div v-if="selected === 'General'"
+          class="mt-4">
+          <UPageGrid
+            :ui="{
+              wrapper: 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-8',
+            }"
+          >
+            <UPageCard title="General">
+              <p>Name: {{ container.getName() }}</p>
+              <p class="truncate">Image: {{ container.getImage() }}</p>
+              <p>Created: {{ container.getCreated() }}</p>
+            </UPageCard>
+            <UPageCard title="Network">
+              Ports:
+              <ul>
+                <li v-for="port in container.getPorts()" :key="port">
+                  {{ port }}
+                </li>
+              </ul>
+            </UPageCard>
+          </UPageGrid>
+        </div>
+        <div v-if="selected === 'Logs'"
+          class="mt-4">
+          <LogViewer :containerId="container.getId()" />
+        </div>
+        <div v-if="selected === 'Shell'"
+          class="mt-4">
+          <LogTerminal :containerId="container.getId()" v-if="selected === 'Shell'"/>
+        </div>
   </div>
   <div v-else>
-    <UButton 
-      size="xl"
-      color="white"
-      square
-      block
-      variant="ghost"
-      loading>
-        Loading container...
+    <UButton size="xl" color="white" square block variant="ghost" loading>
+      Loading container...
     </UButton>
   </div>
 </template>
 
 <script setup>
 import Container from "@/models/Container";
-import LogViewer from '@/components/LogViewer.client.vue';
+import LogViewer from "@/components/LogViewer.vue";
+import LogTerminal from "@/components/LogTerminal.vue";
 
 const route = useRoute();
 const container = ref(null);
+const status = ['General', 'Logs']
+
+const selected = ref(status[0])
 
 const loadContainer = async () => {
   try {
@@ -123,6 +168,14 @@ const performContainerAction = async (container, action) => {
     console.error(`Failed to ${action} container:`, error);
   }
 };
+
+const enableShell = () => {
+  selected.value = 'Shell'
+}
+
+const leaveShell = () => {
+  selected.value = 'General'
+}
 
 onMounted(loadContainer);
 

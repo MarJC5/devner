@@ -41,6 +41,13 @@ RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli
 RUN curl -sS https://getcomposer.org/installer | php && \
     mv composer.phar /usr/local/bin/composer
 
+# Install zsh & oh-my-zsh
+RUN apt-get update && \
+    apt-get install -y zsh && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 
 # Set the working directory
 WORKDIR /var/www/html

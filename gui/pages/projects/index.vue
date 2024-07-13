@@ -1,8 +1,7 @@
 <template>
   <UPageHeader
     title="Projects"
-    headline="Manage your projects"
-    class="mb-4"
+    class="sticky top-0 bg-white z-10 dark:bg-gray-800 mb-4 pb-4"
   />
 </template>
 

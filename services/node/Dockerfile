@@ -31,6 +31,14 @@ RUN . "$NVM_DIR/nvm.sh" && nvm use $NODE_VERSION_20 && node --version
 # Install yarn
 RUN . "$NVM_DIR/nvm.sh" && npm install -g yarn
 
+# Install zsh & oh-my-zsh
+RUN apt-get update && \
+    apt-get install -y zsh && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
 # Copy your application source
 WORKDIR /home/dev/apps/
 

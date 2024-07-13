@@ -1,7 +1,7 @@
 <template>
     <UPageHeader
       :headline="project ? '' : 'Loading...'"
-      class="mb-4"
+      class="sticky top-0 bg-white z-10 dark:bg-gray-800 mb-4 pb-4"
     >
       <template #title>
           <h1 v-if="project" class="flex">{{ project.getName() }}

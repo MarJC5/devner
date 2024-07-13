@@ -220,7 +220,7 @@ onMounted(() => {
 
     <UDashboardPage>
       <UDashboardPanel grow>
-        <UDashboardPanelContent>
+        <UDashboardPanelContent class="pt-0">
           <slot />
         </UDashboardPanelContent>
       </UDashboardPanel>

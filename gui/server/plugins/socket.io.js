@@ -38,6 +38,44 @@ export default defineNitroPlugin((nitroApp) => {
         socket.emit('error', 'Error getting logs: ' + error.message);
       }
     });
+
+
+    socket.on('startShell', async (containerId) => {
+      try {
+        const container = docker.getContainer(containerId);
+        const exec = await container.exec({
+          Cmd: ['/bin/sh'] ,
+          AttachStdin: true,
+          AttachStdout: true,
+          AttachStderr: true,
+          Tty: true,
+        });
+  
+        const stream = await exec.start({ hijack: true, stdin: true });
+  
+        stream.on('data', (data) => {
+          socket.emit('shellOutput', data.toString('utf8'));
+        });
+
+        const shellInputHandler = (data) => {
+          stream.write(data);
+        };
+
+        socket.on('shellInput', shellInputHandler);
+
+        const cleanup = () => {
+          stream.end();
+          socket.off('shellInput', shellInputHandler);
+        };
+        
+        socket.on('stopShell', cleanup);
+        socket.on('disconnect', cleanup);
+
+      } catch (error) {
+        socket.emit('error', 'Error starting shell: ' + error.message);
+      }
+    });
+
   });
 
   nitroApp.router.use('/socket.io/', defineEventHandler({

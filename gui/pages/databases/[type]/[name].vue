@@ -1,7 +1,7 @@
 <template>
     <UPageHeader
       :headline="database ? '' : 'Loading...'"
-      class="mb-4"
+      class="mb-4 sticky top-0 bg-white z-10 dark:bg-gray-900 pb-4"
     >
       <template #title>
           <h1 v-if="database" class="flex">{{ database.getName() }}

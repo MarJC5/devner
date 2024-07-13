@@ -2,7 +2,8 @@
 import type { DefineComponent, SlotsType } from 'vue'
 type IslandComponent<T extends DefineComponent> = T & DefineComponent<{}, {refresh: () => Promise<void>}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, SlotsType<{ fallback: { error: unknown } }>>
 interface _GlobalComponents {
-      'LogViewer': typeof import("../components/LogViewer.client.vue")['default']
+      'LogTerminal': typeof import("../components/LogTerminal.vue")['default']
+    'LogViewer': typeof import("../components/LogViewer.vue")['default']
     'Socket': typeof import("../components/socket")['default']
     'UAside': typeof import("../node_modules/@nuxt/ui-pro/components/aside/Aside.vue")['default']
     'UAsideLinks': typeof import("../node_modules/@nuxt/ui-pro/components/aside/AsideLinks.vue")['default']
@@ -134,11 +135,11 @@ interface _GlobalComponents {
     'Html': typeof import("../node_modules/nuxt/dist/head/runtime/components")['Html']
     'Body': typeof import("../node_modules/nuxt/dist/head/runtime/components")['Body']
     'NuxtIsland': typeof import("../node_modules/nuxt/dist/app/components/nuxt-island")['default']
-    'LogViewer': IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
     'UModals': IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
     'USlideovers': IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
     'NuxtRouteAnnouncer': IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
-      'LazyLogViewer': typeof import("../components/LogViewer.client.vue")['default']
+      'LazyLogTerminal': typeof import("../components/LogTerminal.vue")['default']
+    'LazyLogViewer': typeof import("../components/LogViewer.vue")['default']
     'LazySocket': typeof import("../components/socket")['default']
     'LazyUAside': typeof import("../node_modules/@nuxt/ui-pro/components/aside/Aside.vue")['default']
     'LazyUAsideLinks': typeof import("../node_modules/@nuxt/ui-pro/components/aside/AsideLinks.vue")['default']
@@ -270,7 +271,6 @@ interface _GlobalComponents {
     'LazyHtml': typeof import("../node_modules/nuxt/dist/head/runtime/components")['Html']
     'LazyBody': typeof import("../node_modules/nuxt/dist/head/runtime/components")['Body']
     'LazyNuxtIsland': typeof import("../node_modules/nuxt/dist/app/components/nuxt-island")['default']
-    'LazyLogViewer': IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
     'LazyUModals': IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
     'LazyUSlideovers': IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
     'LazyNuxtRouteAnnouncer': IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
@@ -288,7 +288,8 @@ declare module 'vue' {
   export interface GlobalComponents extends _GlobalComponents { }
 }
 
-export const LogViewer: typeof import("../components/LogViewer.client.vue")['default']
+export const LogTerminal: typeof import("../components/LogTerminal.vue")['default']
+export const LogViewer: typeof import("../components/LogViewer.vue")['default']
 export const Socket: typeof import("../components/socket")['default']
 export const UAside: typeof import("../node_modules/@nuxt/ui-pro/components/aside/Aside.vue")['default']
 export const UAsideLinks: typeof import("../node_modules/@nuxt/ui-pro/components/aside/AsideLinks.vue")['default']
@@ -420,11 +421,11 @@ export const Head: typeof import("../node_modules/nuxt/dist/head/runtime/compone
 export const Html: typeof import("../node_modules/nuxt/dist/head/runtime/components")['Html']
 export const Body: typeof import("../node_modules/nuxt/dist/head/runtime/components")['Body']
 export const NuxtIsland: typeof import("../node_modules/nuxt/dist/app/components/nuxt-island")['default']
-export const LogViewer: IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
 export const UModals: IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
 export const USlideovers: IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
 export const NuxtRouteAnnouncer: IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
-export const LazyLogViewer: typeof import("../components/LogViewer.client.vue")['default']
+export const LazyLogTerminal: typeof import("../components/LogTerminal.vue")['default']
+export const LazyLogViewer: typeof import("../components/LogViewer.vue")['default']
 export const LazySocket: typeof import("../components/socket")['default']
 export const LazyUAside: typeof import("../node_modules/@nuxt/ui-pro/components/aside/Aside.vue")['default']
 export const LazyUAsideLinks: typeof import("../node_modules/@nuxt/ui-pro/components/aside/AsideLinks.vue")['default']
@@ -556,7 +557,6 @@ export const LazyHead: typeof import("../node_modules/nuxt/dist/head/runtime/com
 export const LazyHtml: typeof import("../node_modules/nuxt/dist/head/runtime/components")['Html']
 export const LazyBody: typeof import("../node_modules/nuxt/dist/head/runtime/components")['Body']
 export const LazyNuxtIsland: typeof import("../node_modules/nuxt/dist/app/components/nuxt-island")['default']
-export const LazyLogViewer: IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
 export const LazyUModals: IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
 export const LazyUSlideovers: IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
 export const LazyNuxtRouteAnnouncer: IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>

@@ -1,3 +1,5 @@
+import stripAnsi from 'strip-ansi';
+
 class Container {
   constructor(containerData) {
     this.id = containerData.Id;
@@ -148,7 +150,7 @@ class Container {
       // Clean up the output by removing non-printable characters if 'clean' is true
       if (clean) {
         return rawOutput
-          .map((line) => line.replace(/[^\x20-\x7E]/g, ""))
+          .map((line) => stripAnsi(line).replace(/[^\x20-\x7E]/g, ''))
           .filter((line) => line);
       }
 
@@ -169,7 +171,7 @@ class Container {
       const columns = row.split("\t").map((c) => c.trim()); // Split by tab characters and trim
       let rowObject = {};
       headers.forEach((header, index) => {
-        rowObject[header.replace(/[^\x20-\x7E]/g, "")] = columns[index] || "";
+        rowObject[stripAnsi(header).replace(/[^\x20-\x7E]/g, '')] = columns[index] || "";
       });
       return rowObject;
     });

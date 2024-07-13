@@ -1,8 +1,7 @@
 <template>
   <UPageHeader
     title="Containers"
-    headline="Manage your containers"
-    class="mb-4"
+    class="sticky top-0 bg-white z-10 dark:bg-gray-800 mb-4 pb-4"
   />
 
   <UPageGrid v-if="containers.length">
@@ -16,7 +15,7 @@
         />
       </template>
 
-      <div class="flex flex-wrap gap-4">
+      <div class="flex flex-wrap gap-2">
         <UButton
           @click="() => performContainerAction(container, 'start')"
           v-if="!container.isRunning()"
