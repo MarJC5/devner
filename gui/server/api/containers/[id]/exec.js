@@ -1,4 +1,7 @@
-import dockerService from '@/server/services/docker';
+import Docker from 'dockerode';
+import { PassThrough } from 'stream';
+
+const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
 export default defineEventHandler(async (event) => {
     if (event.node.req.method !== 'POST') {
@@ -15,7 +18,7 @@ export default defineEventHandler(async (event) => {
     }
 
     try {
-        const container = await dockerService.getContainer(id);
+        const container = docker.getContainer(id);
         const exec = await container.exec({
             AttachStdout: true,
             AttachStderr: true,
@@ -25,14 +28,28 @@ export default defineEventHandler(async (event) => {
 
         const stream = await exec.start({ hijack: true });
 
-        let output = '';
-        stream.on('data', (chunk) => {
-            output += chunk.toString();
+        // Create separate streams for stdout and stderr
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        container.modem.demuxStream(stream, stdout, stderr);
+
+        let stdoutOutput = '';
+        let stderrOutput = '';
+
+        stdout.on('data', (chunk) => {
+            stdoutOutput += chunk.toString('utf8');
+        });
+
+        stderr.on('data', (chunk) => {
+            stderrOutput += chunk.toString('utf8');
         });
 
         return new Promise((resolve, reject) => {
             stream.on('end', () => {
-                resolve({ output });
+                resolve({
+                    stdout: stdoutOutput,
+                    stderr: stderrOutput,
+                });
             });
 
             stream.on('error', (error) => {

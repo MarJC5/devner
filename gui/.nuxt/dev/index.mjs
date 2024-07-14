@@ -6,6 +6,7 @@ import { parentPort, threadId } from 'node:worker_threads';
 import { defineEventHandler, handleCacheHeaders, splitCookiesString, isEvent, createEvent, fetchWithEvent, getRequestHeader, eventHandler, setHeaders, sendRedirect, proxyRequest, createError, setResponseHeader, send, getResponseStatus, setResponseStatus, setResponseHeaders, getRequestHeaders, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, getQuery as getQuery$1, readBody, getResponseStatusText } from 'file:///app/node_modules/h3/dist/index.mjs';
 import wsAdapter from 'file:///app/node_modules/crossws/dist/adapters/node.mjs';
 import Docker from 'file:///app/node_modules/dockerode/lib/docker.js';
+import { PassThrough } from 'stream';
 import Container from 'file:///app/models/Container.js';
 import Database from 'file:///app/models/Database.js';
 import Project from 'file:///app/models/Project.js';
@@ -898,14 +899,20 @@ const _BU7OWr3lyh = defineNitroPlugin((nitroApp) => {
       try {
         const container = docker.getContainer(containerId);
         const exec = await container.exec({
-          Cmd: ["/bin/sh"],
+          Cmd: ["/bin/bash"],
           AttachStdin: true,
           AttachStdout: true,
           AttachStderr: true,
           Tty: true
         });
         const stream = await exec.start({ hijack: true, stdin: true });
-        stream.on("data", (data) => {
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        docker.modem.demuxStream(stream, stdout, stderr);
+        stdout.on("data", (data) => {
+          socket.emit("shellOutput", data.toString("utf8"));
+        });
+        stderr.on("data", (data) => {
           socket.emit("shellOutput", data.toString("utf8"));
         });
         const shellInputHandler = (data) => {
@@ -1241,7 +1248,7 @@ const errorDev = /*#__PURE__*/Object.freeze({
   template: template$1
 });
 
-const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+const docker$1 = new Docker({ socketPath: "/var/run/docker.sock" });
 const dockerService = {
   /**
    * Get all containers related to devner
@@ -1249,7 +1256,7 @@ const dockerService = {
    * @returns {Promise<Docker.ContainerInfo[]>}
    */
   getContainers() {
-    const containers = docker.listContainers({ all: true });
+    const containers = docker$1.listContainers({ all: true });
     return containers;
   },
   /**
@@ -1260,7 +1267,7 @@ const dockerService = {
    * @returns {Promise<string>}
    */
   getContainerLogs(containerId, options = { follow: true, stdout: true, stderr: true, since: 0 }) {
-    const container = docker.getContainer(containerId);
+    const container = docker$1.getContainer(containerId);
     return container.logs(options);
   },
   /**
@@ -1270,7 +1277,7 @@ const dockerService = {
    * @returns {Docker.Container}
    */
   startContainer(containerId) {
-    const container = docker.getContainer(containerId);
+    const container = docker$1.getContainer(containerId);
     return container.start();
   },
   /**
@@ -1280,7 +1287,7 @@ const dockerService = {
    * @returns {Docker.Container}
    */
   restartContainer(containerId) {
-    const container = docker.getContainer(containerId);
+    const container = docker$1.getContainer(containerId);
     return container.restart();
   },
   /**
@@ -1290,7 +1297,7 @@ const dockerService = {
    * @returns {Docker.Container}
    */
   stopContainer(containerId) {
-    const container = docker.getContainer(containerId);
+    const container = docker$1.getContainer(containerId);
     return container.stop();
   },
   /**
@@ -1300,9 +1307,9 @@ const dockerService = {
    * @returns {Docker.Container}
    */
   stopAllContainers() {
-    const containers = docker.listContainers({ all: true });
+    const containers = docker$1.listContainers({ all: true });
     return containers.map((container) => {
-      const c = docker.getContainer(container.Id);
+      const c = docker$1.getContainer(container.Id);
       return c.stop();
     });
   },
@@ -1313,7 +1320,7 @@ const dockerService = {
    * @returns {Docker.Container}
    */
   createContainer(data) {
-    return docker.createContainer(data);
+    return docker$1.createContainer(data);
   },
   /**
    * Remove a container by its id
@@ -1322,7 +1329,7 @@ const dockerService = {
    * @returns {Docker.Container}
    */
   removeContainer(containerId) {
-    const container = docker.getContainer(containerId);
+    const container = docker$1.getContainer(containerId);
     return container.remove();
   },
   /**
@@ -1332,7 +1339,7 @@ const dockerService = {
    * @returns {Docker.Container}
    */
   rebuildContainer(containerId) {
-    const container = docker.getContainer(containerId);
+    const container = docker$1.getContainer(containerId);
     return container.rebuild();
   },
   /**
@@ -1342,7 +1349,7 @@ const dockerService = {
    * @returns {Docker.ContainerInfo}
    */
   getContainerDetail(containerId) {
-    const container = docker.getContainer(containerId);
+    const container = docker$1.getContainer(containerId);
     return container.inspect();
   },
   /**
@@ -1352,7 +1359,7 @@ const dockerService = {
    * @returns {Docker.Container}
    */
   getContainer(containerId) {
-    const container = docker.getContainer(containerId);
+    const container = docker$1.getContainer(containerId);
     return container;
   }
 };
@@ -1383,6 +1390,7 @@ const details$1 = /*#__PURE__*/Object.freeze({
   default: details
 });
 
+const docker = new Docker({ socketPath: "/var/run/docker.sock" });
 const exec = defineEventHandler(async (event) => {
   if (event.node.req.method !== "POST") {
     return { status: "error" };
@@ -1394,7 +1402,7 @@ const exec = defineEventHandler(async (event) => {
     return { status: "error", message: "Command is required" };
   }
   try {
-    const container = await dockerService.getContainer(id);
+    const container = docker.getContainer(id);
     const exec = await container.exec({
       AttachStdout: true,
       AttachStderr: true,
@@ -1402,13 +1410,23 @@ const exec = defineEventHandler(async (event) => {
       Cmd: ["sh", "-c", command]
     });
     const stream = await exec.start({ hijack: true });
-    let output = "";
-    stream.on("data", (chunk) => {
-      output += chunk.toString();
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    container.modem.demuxStream(stream, stdout, stderr);
+    let stdoutOutput = "";
+    let stderrOutput = "";
+    stdout.on("data", (chunk) => {
+      stdoutOutput += chunk.toString("utf8");
+    });
+    stderr.on("data", (chunk) => {
+      stderrOutput += chunk.toString("utf8");
     });
     return new Promise((resolve, reject) => {
       stream.on("end", () => {
-        resolve({ output });
+        resolve({
+          stdout: stdoutOutput,
+          stderr: stderrOutput
+        });
       });
       stream.on("error", (error) => {
         reject({ status: "error", message: error.message });

@@ -140,7 +140,7 @@ class Container {
       }
 
       // Split the raw output into lines
-      const rawOutput = response.output.split("\n");
+      const rawOutput = response.stdout.split("\n");
 
       // If parsing as table, handle the parsing
       if (parseAsTable) {

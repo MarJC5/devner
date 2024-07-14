@@ -31,7 +31,7 @@ class Database {
 
       // Remove BDatabase if information_schema, performance_schema, mysql, and sys or empty
       const cleanedDatabases = rawDatabases.map((db) =>
-        db.BDatabase.replace(/[^\x20-\x7E]/g, "").trim()
+        db.Database.replace(/[^\x20-\x7E]/g, "").trim()
       );
 
       // Remove unwanted databases

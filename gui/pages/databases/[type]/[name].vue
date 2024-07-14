@@ -42,7 +42,6 @@
   const loadDatabase = async () => {
     try {
         database.value = await Database.fetchDatabase(route.params.type, route.params.name);
-        console.log(database.value);
     } catch (error) {
       console.error("Failed to load database details:", error);
     }

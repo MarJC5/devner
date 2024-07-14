@@ -2,6 +2,7 @@ import { Server as Engine } from 'engine.io';
 import { Server } from 'socket.io';
 import { defineEventHandler } from 'h3';
 import Docker from 'dockerode';
+import { PassThrough } from 'stream';
 
 export default defineNitroPlugin((nitroApp) => {
   const engine = new Engine();
@@ -44,7 +45,7 @@ export default defineNitroPlugin((nitroApp) => {
       try {
         const container = docker.getContainer(containerId);
         const exec = await container.exec({
-          Cmd: ['/bin/sh'] ,
+          Cmd: ['/bin/bash'] ,
           AttachStdin: true,
           AttachStdout: true,
           AttachStderr: true,
@@ -53,7 +54,18 @@ export default defineNitroPlugin((nitroApp) => {
   
         const stream = await exec.start({ hijack: true, stdin: true });
   
-        stream.on('data', (data) => {
+        // Create separate streams for stdout and stderr
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        docker.modem.demuxStream(stream, stdout, stderr);
+
+        // Handle stdout
+        stdout.on('data', (data) => {
+          socket.emit('shellOutput', data.toString('utf8'));
+        });
+
+        // Handle stderr
+        stderr.on('data', (data) => {
           socket.emit('shellOutput', data.toString('utf8'));
         });
 

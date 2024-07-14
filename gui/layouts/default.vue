@@ -73,10 +73,24 @@ const databasesLinks = ref([
 ]);
 
 const loadContainers = async () => {
-  containers.value = await Container.all();
-  projects.value = await Project.all();
-  databases.value = await Database.all("mysql8");
+  try {
+    // Fetch containers, projects, and databases in parallel
+    const [containersData, projectsData, mysql8Databases, mysql5Databases] = await Promise.all([
+      Container.all(),
+      Project.all(),
+      Database.all("mysql8"),
+      Database.all("mysql5")
+    ]);
+
+    // Assign fetched data to respective variables
+    containers.value = containersData;
+    projects.value = projectsData;
+    databases.value = [...mysql8Databases, ...mysql5Databases]; // Merge both MySQL databases results
+  } catch (error) {
+    console.error("Error loading containers, projects, or databases:", error);
+  }
 };
+
 
 watch(containers, (newContainers) => {
   // Watch the containers ref and update containersLinks accordingly

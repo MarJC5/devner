@@ -5,7 +5,7 @@
   </template>
   
   <script setup>
-  import { socket } from './socket';
+  import { socket } from '@/utils/socket';
   
   const props = defineProps({
     containerId: {
@@ -77,4 +77,4 @@
     font-family: monospace; /* Use a monospaced font for logs */
   }
   </style>
-  
+  ../utils/socket

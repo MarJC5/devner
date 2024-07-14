@@ -4,7 +4,7 @@
 
 <script setup>
 import { isClient } from '@vueuse/core';
-import { socket } from './socket';
+import { socket } from '@/utils/socket';
 
 const props = defineProps({
   containerId: {
@@ -28,12 +28,12 @@ const disconnectSocket = () => {
 
 const handleShellOutput = (data) => {
   if (xterm) {
-    xterm.write(data);
+    xterm.write(data.toString('utf8'));
   }
 };
 
 const handleShellInput = (data) => {
-  socket.emit('shellInput', data);
+  socket.emit('shellInput', data.toString('utf8'));
 };
 
 onMounted(async () => {
@@ -44,6 +44,7 @@ onMounted(async () => {
 
     xterm = new Terminal({
       cursorBlink: true,
+      fontSize: 16,
     });
     fitAddon = new FitAddon();
     xterm.loadAddon(fitAddon);
@@ -83,14 +84,19 @@ onBeforeUnmount(() => {
 <style>
 .terminal-container {
   height: 75vh;
+  max-height: 75vh;
   width: 100%;
-  padding: 1rem;
   border-radius: 8px;
   background-color: rgb(0, 0, 0);
 }
 
+.xterm-screen {
+  border-radius: 8px;
+  padding: 1rem !important;
+}
+
 .xterm-viewport {
-  height: 73vh;
+  border-radius: 8px;
   overflow-y: auto;
 
   /* Hide scrollbar */
@@ -101,4 +107,4 @@ onBeforeUnmount(() => {
 .xterm-viewport::-webkit-scrollbar {
   display: none;
 }
-</style>
+</style>../utils/socket

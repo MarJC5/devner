@@ -39,6 +39,20 @@ RUN apt-get update && \
 
 RUN sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 
+# Install Locale (for utf-8 support)
+RUN apt-get update && \
+    apt-get install -y \
+        locales && \
+    rm -r /var/lib/apt/lists/*
+
+RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+    locale-gen && \
+    dpkg-reconfigure --frontend=noninteractive locales
+
+ENV LC_ALL en_US.UTF-8 
+ENV LANG en_US.UTF-8  
+ENV LANGUAGE en_US:en 
+
 # Copy your application source
 WORKDIR /home/dev/apps/
 

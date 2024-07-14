@@ -70,13 +70,11 @@ declare global {
   const onServerPrefetch: typeof import('../../node_modules/vue')['onServerPrefetch']
   const onUnmounted: typeof import('../../node_modules/vue')['onUnmounted']
   const onUpdated: typeof import('../../node_modules/vue')['onUpdated']
-  const performContainerAction: typeof import('../../utils/containerActions')['performContainerAction']
   const prefetchComponents: typeof import('../../node_modules/nuxt/dist/app/composables/preload')['prefetchComponents']
   const preloadComponents: typeof import('../../node_modules/nuxt/dist/app/composables/preload')['preloadComponents']
   const preloadPayload: typeof import('../../node_modules/nuxt/dist/app/composables/payload')['preloadPayload']
   const preloadRouteComponents: typeof import('../../node_modules/nuxt/dist/app/composables/preload')['preloadRouteComponents']
   const prerenderRoutes: typeof import('../../node_modules/nuxt/dist/app/composables/ssr')['prerenderRoutes']
-  const promisify: typeof import('../../utils/promisify')['promisify']
   const provide: typeof import('../../node_modules/vue')['provide']
   const proxyRefs: typeof import('../../node_modules/vue')['proxyRefs']
   const reactive: typeof import('../../node_modules/vue')['reactive']
@@ -95,6 +93,7 @@ declare global {
   const shallowRef: typeof import('../../node_modules/vue')['shallowRef']
   const showError: typeof import('../../node_modules/nuxt/dist/app/composables/error')['showError']
   const slidOverInjectionKey: typeof import('../../node_modules/@nuxt/ui/dist/runtime/composables/useSlideover')['slidOverInjectionKey']
+  const socket: typeof import('../../utils/socket')['socket']
   const toRaw: typeof import('../../node_modules/vue')['toRaw']
   const toRef: typeof import('../../node_modules/vue')['toRef']
   const toRefs: typeof import('../../node_modules/vue')['toRefs']
@@ -271,13 +270,11 @@ declare module 'vue' {
     readonly onServerPrefetch: UnwrapRef<typeof import('../../node_modules/vue')['onServerPrefetch']>
     readonly onUnmounted: UnwrapRef<typeof import('../../node_modules/vue')['onUnmounted']>
     readonly onUpdated: UnwrapRef<typeof import('../../node_modules/vue')['onUpdated']>
-    readonly performContainerAction: UnwrapRef<typeof import('../../utils/containerActions')['performContainerAction']>
     readonly prefetchComponents: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preload')['prefetchComponents']>
     readonly preloadComponents: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preload')['preloadComponents']>
     readonly preloadPayload: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/payload')['preloadPayload']>
     readonly preloadRouteComponents: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preload')['preloadRouteComponents']>
     readonly prerenderRoutes: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/ssr')['prerenderRoutes']>
-    readonly promisify: UnwrapRef<typeof import('../../utils/promisify')['promisify']>
     readonly provide: UnwrapRef<typeof import('../../node_modules/vue')['provide']>
     readonly proxyRefs: UnwrapRef<typeof import('../../node_modules/vue')['proxyRefs']>
     readonly reactive: UnwrapRef<typeof import('../../node_modules/vue')['reactive']>
@@ -296,6 +293,7 @@ declare module 'vue' {
     readonly shallowRef: UnwrapRef<typeof import('../../node_modules/vue')['shallowRef']>
     readonly showError: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/error')['showError']>
     readonly slidOverInjectionKey: UnwrapRef<typeof import('../../node_modules/@nuxt/ui/dist/runtime/composables/useSlideover')['slidOverInjectionKey']>
+    readonly socket: UnwrapRef<typeof import('../../utils/socket')['socket']>
     readonly toRaw: UnwrapRef<typeof import('../../node_modules/vue')['toRaw']>
     readonly toRef: UnwrapRef<typeof import('../../node_modules/vue')['toRef']>
     readonly toRefs: UnwrapRef<typeof import('../../node_modules/vue')['toRefs']>
@@ -465,13 +463,11 @@ declare module '@vue/runtime-core' {
     readonly onServerPrefetch: UnwrapRef<typeof import('../../node_modules/vue')['onServerPrefetch']>
     readonly onUnmounted: UnwrapRef<typeof import('../../node_modules/vue')['onUnmounted']>
     readonly onUpdated: UnwrapRef<typeof import('../../node_modules/vue')['onUpdated']>
-    readonly performContainerAction: UnwrapRef<typeof import('../../utils/containerActions')['performContainerAction']>
     readonly prefetchComponents: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preload')['prefetchComponents']>
     readonly preloadComponents: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preload')['preloadComponents']>
     readonly preloadPayload: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/payload')['preloadPayload']>
     readonly preloadRouteComponents: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preload')['preloadRouteComponents']>
     readonly prerenderRoutes: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/ssr')['prerenderRoutes']>
-    readonly promisify: UnwrapRef<typeof import('../../utils/promisify')['promisify']>
     readonly provide: UnwrapRef<typeof import('../../node_modules/vue')['provide']>
     readonly proxyRefs: UnwrapRef<typeof import('../../node_modules/vue')['proxyRefs']>
     readonly reactive: UnwrapRef<typeof import('../../node_modules/vue')['reactive']>
@@ -490,6 +486,7 @@ declare module '@vue/runtime-core' {
     readonly shallowRef: UnwrapRef<typeof import('../../node_modules/vue')['shallowRef']>
     readonly showError: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/error')['showError']>
     readonly slidOverInjectionKey: UnwrapRef<typeof import('../../node_modules/@nuxt/ui/dist/runtime/composables/useSlideover')['slidOverInjectionKey']>
+    readonly socket: UnwrapRef<typeof import('../../utils/socket')['socket']>
     readonly toRaw: UnwrapRef<typeof import('../../node_modules/vue')['toRaw']>
     readonly toRef: UnwrapRef<typeof import('../../node_modules/vue')['toRef']>
     readonly toRefs: UnwrapRef<typeof import('../../node_modules/vue')['toRefs']>
