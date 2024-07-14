@@ -51,7 +51,8 @@ services:
       - ./services/frankenphp/config/php.ini:/usr/local/etc/php/php.ini
     tty: true
     depends_on:
-      - mysql_8
+      - mysql
+      - postgres
       - mailpit
       - gui
 
@@ -71,18 +72,18 @@ services:
       - ./projects:/home/dev/apps/
       - /etc/localtime:/etc/localtime:ro
 
-  mysql_8:
+  mysql:
     image: mysql:8.4
     restart: unless-stopped
     tty: true
-    container_name: mysql8_devner
+    container_name: mysql_devner
     platform: "linux/x86_64"
     ports:
       - '3306:3306'
     volumes:
       - ./services/mysql/scripts/create.sh:/create.sh
       - ./services/mysql/config/.my.cnf:/.my.cnf
-      - mysql8_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
       - /etc/localtime:/etc/localtime:ro
     environment:
       MYSQL_USER: devner
@@ -90,23 +91,23 @@ services:
       MYSQL_ROOT_PASSWORD: devner
       TZ: "Europe/Zurich"
 
-  mysql_5:
-    image: mysql:5.7
+  postgres:
+    image: postgres:14
     restart: unless-stopped
     tty: true
-    container_name: mysql5_devner
+    container_name: postgres_devner
     platform: "linux/x86_64"
     ports:
-      - '3307:3306'
+      - '5432:5432'
     volumes:
-      - ./services/mysql/scripts/create.sh:/create.sh
-      - ./services/mysql/config/.my.cnf:/.my.cnf
-      - mysql5_data:/var/lib/mysql
+      - ./services/postgres/scripts/create.sh:/create.sh
+      - ./services/postgres/config/.pgpass:/.pgpass
+      - postgres_data:/var/lib/postgresql/data
       - /etc/localtime:/etc/localtime:ro
     environment:
-      MYSQL_USER: devner
-      MYSQL_PASSWORD: devner
-      MYSQL_ROOT_PASSWORD: devner
+      POSTGRES_USER: devner
+      POSTGRES_PASSWORD: devner
+      POSTGRES_DB: devner
       TZ: "Europe/Zurich"
 
   adminer:
@@ -122,5 +123,5 @@ services:
       TZ: "Europe/Zurich"
 
 volumes:
-  mysql8_data:
-  mysql5_data:
+  mysql_data:
+  postgres_data:

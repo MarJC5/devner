@@ -55,13 +55,13 @@ frankenphp:
 	@echo "${GREEN}Entering frankenphp container...${RESET}"
 	@${DOCKER} exec frankenphp bash
 
-mysql8:
-	@echo "${GREEN}Entering mysql8 container...${RESET}"
-	@${DOCKER} exec mysql_8 bash
+mysql:
+	@echo "${GREEN}Entering mysql container...${RESET}"
+	@${DOCKER} exec mysql bash
 
-mysql5:
-	@echo "${GREEN}Entering mysql5 container...${RESET}"
-	@${DOCKER} exec mysql5 bash
+postgres:
+	@echo "${GREEN}Entering postgres container...${RESET}"
+	@${DOCKER} exec postgres bash
 
 nuxt:
 	@echo "${GREEN}Entering nuxt container...${RESET}"

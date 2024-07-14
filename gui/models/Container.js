@@ -78,6 +78,21 @@ class Container {
     return containers;
   }
 
+  static async allOthers() {
+    const data = await $fetch(`/api/containers`, { method: "GET" });
+    const containers = await Promise.all(
+      data.map(async (containerData) => {
+        const model = await Container.fetchContainer(containerData.Id);
+        if (
+          !model.getNetworks().devner
+        ) {
+          return model;
+        }
+      })
+    ).then((results) => results.filter((container) => container !== undefined));
+    return containers;
+  }
+
   formatDate(isoString) {
     const date = new Date(isoString);
     return date.toLocaleString();

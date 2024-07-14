@@ -5,10 +5,12 @@ import Project from "@/models/Project";
 import Database from "@/models/Database";
 
 const containers = ref([]);
+const otherContainers = ref([]);
 const projects = ref([]);
 const databases = ref([]);
 
 const containersCollapsed = ref(false);
+const otherContainersCollapsed = ref(true);
 const projectsCollapsed = ref(false);
 const databasesCollapsed = ref(false);
 
@@ -39,6 +41,21 @@ const containersLinks = ref([
         id: "containers",
         label: "Overview",
         to: "/containers",
+      },
+    ],
+  },
+]);
+
+const otherContainersLinks = ref([
+  {
+    id: "other-containers",
+    label: "Other Containers",
+    icon: "i-heroicons-cube-transparent",
+    children: [
+      {
+        id: "other-containers",
+        label: "Overview",
+        to: "/other-containers",
       },
     ],
   },
@@ -75,22 +92,22 @@ const databasesLinks = ref([
 const loadContainers = async () => {
   try {
     // Fetch containers, projects, and databases in parallel
-    const [containersData, projectsData, mysql8Databases, mysql5Databases] = await Promise.all([
-      Container.all(),
-      Project.all(),
-      Database.all("mysql8"),
-      Database.all("mysql5")
-    ]);
+    const [containersData, projectsData, mysqlDatabases, postgresDatabases] =
+      await Promise.all([
+        Container.all(),
+        Project.all(),
+        Database.all("mysql"),
+        Database.all("postgres"),
+      ]);
 
     // Assign fetched data to respective variables
     containers.value = containersData;
     projects.value = projectsData;
-    databases.value = [...mysql8Databases, ...mysql5Databases]; // Merge both MySQL databases results
+    databases.value = [...mysqlDatabases, ...postgresDatabases]; // Merge both MySQL & Postgress databases results
   } catch (error) {
     console.error("Error loading containers, projects, or databases:", error);
   }
 };
-
 
 watch(containers, (newContainers) => {
   // Watch the containers ref and update containersLinks accordingly
@@ -182,9 +199,9 @@ watch(databasesCollapsed, (newValue) => {
 });
 
 onMounted(() => {
-  loadCollapsedState('containers-collapsed', containersCollapsed);
-  loadCollapsedState('projects-collapsed', projectsCollapsed);
-  loadCollapsedState('databases-collapsed', databasesCollapsed);
+  loadCollapsedState("containers-collapsed", containersCollapsed);
+  loadCollapsedState("projects-collapsed", projectsCollapsed);
+  loadCollapsedState("databases-collapsed", databasesCollapsed);
   loadContainers();
 });
 </script>
@@ -228,6 +245,13 @@ onMounted(() => {
         <UNavigationAccordion
           :links="databasesLinks"
           :defaultOpen="databasesCollapsed"
+        />
+
+        <div class="flex-1" />
+
+        <UNavigationAccordion
+          :links="otherContainersLinks"
+          :defaultOpen="otherContainersCollapsed"
         />
       </UDashboardSidebar>
     </UDashboardPanel>

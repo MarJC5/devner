@@ -899,7 +899,7 @@ const _BU7OWr3lyh = defineNitroPlugin((nitroApp) => {
       try {
         const container = docker.getContainer(containerId);
         const exec = await container.exec({
-          Cmd: ["/bin/bash"],
+          Cmd: ["/bin/sh"],
           AttachStdin: true,
           AttachStdout: true,
           AttachStderr: true,
