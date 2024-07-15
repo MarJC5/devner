@@ -1,4 +1,5 @@
 import Container from "./Container.js";
+import Database from "./Database.js";
 
 class Project {
   constructor(projectData) {
@@ -6,6 +7,7 @@ class Project {
     this.path = projectData.path;
     this.type = projectData.type;
     this.directories = projectData.directories || [];
+    this.database = projectData.database || null;
 
     this.loading = {
         create: false,
@@ -39,7 +41,7 @@ class Project {
     const filesAndDirs = await container.cmd(`ls -a /var/www/html/${name}/`);
     const project = this.groupProject(name, filesAndDirs);
 
-    return project;
+    return project || null;
   }
 
    /**
@@ -98,13 +100,31 @@ class Project {
   }
 
   /**
+   * Get project database
+   * 
+   * @returns {Database}
+   */
+  getDatabase() {
+    return this.database;
+  }
+
+  /**
+   * Set project database
+   * 
+   * @param {Database} database
+   */
+  setDatabase(database) {
+    this.database = database;
+  }
+
+  /**
    * Group projects by root directory
    *
    * @param {*} filesAndDirs
    * @returns
    */
 
-  static groupProjects(filesAndDirs) {
+  static async groupProjects(filesAndDirs) {
     const directories = {};
     const projects = [];
     let currentProject = "";
@@ -124,12 +144,23 @@ class Project {
       if (directory === "." || directory === ".." || directory === "gui") {
         continue;
       }
+
+      // Search for a database if it exists
+      const [mysqlDatabases, postgresDatabases] =
+        await Promise.all([
+          Database.all("mysql"),
+          Database.all("postgres"),
+        ]);
+      
+      const databases = [...mysqlDatabases, ...postgresDatabases].sort((a, b) => a.getName().localeCompare(b.getName()));
+
       projects.push(
         new Project({
           name: directory,
           path: `/var/www/html/${directory}`,
           type: this.identifyProject(directories[directory]),
           directories: directories[directory],
+          database: databases.find((database) => database.getName() === directory) || null,
         })
       );
     }
@@ -137,13 +168,27 @@ class Project {
     return projects;
   }
 
-  static groupProject(name, filesAndDirs) {
+  static async groupProject(name, filesAndDirs) {
     const directories = filesAndDirs.map(item => item.trim());
+
+    if (directories.length === 0) {
+      return null;
+    }
+
+    // Search for a database if it exists
+    const [mysqlDatabases, postgresDatabases] =
+    await Promise.all([
+      Database.all("mysql"),
+      Database.all("postgres"),
+    ]);
+  const databases = [...mysqlDatabases, ...postgresDatabases].sort((a, b) => a.getName().localeCompare(b.getName()));
+  
     return new Project({
       name: name,
       path: `/var/www/html/${name}`,
       type: this.identifyProject(directories),
       directories: directories,
+      database: databases.find((database) => database.getName() === name) || null,
     });
   }
 

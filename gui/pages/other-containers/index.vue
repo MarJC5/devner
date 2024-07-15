@@ -10,7 +10,7 @@
     variant="solid"
     size="lg"
     :items="containers"
-    v-if="containers.length"
+    v-if="containers.length && !loading"
   >
     <template #item="{ item }">
       <UPageGrid class="py-4">
@@ -25,6 +25,15 @@
         </template>
 
         <div class="flex flex-wrap gap-2">
+          <UButton
+            :to="`/containers/${container.getId()}`"
+            icon="i-heroicons-eye"
+            size="sm"
+            color="white"
+            square
+            variant="solid"
+            label="Details"
+          />
           <UButton
             @click="() => performContainerAction(container, 'start')"
             v-if="!container.isRunning()"
@@ -98,15 +107,6 @@
             :loading="container.isLoading('rebuild')"
             label="Rebuild"
           />
-          <UButton
-            :to="`/containers/${container.getId()}`"
-            icon="i-heroicons-eye"
-            size="sm"
-            color="white"
-            square
-            variant="solid"
-            label="Details"
-          />
         </div>
       </UCard>
       </UPageGrid>
@@ -124,11 +124,12 @@ import { ref, onMounted } from "vue";
 import Container from "@/models/Container";
 
 const containers = ref([]);
+const loading = ref(true);
 
 const loadContainers = async () => {
   try {
     containers.value = await Container.allOthers();
-    console.log("Loaded containers:", containers.value);
+    loading.value = false;
   } catch (error) {
     console.error("Failed to load containers:", error);
   }
@@ -137,7 +138,9 @@ const loadContainers = async () => {
 const performContainerAction = async (container, action) => {
   try {
     await container[action]();
+    loading.value = true;
     loadContainers();
+    loading.value = false;
   } catch (error) {
     console.error(`Failed to ${action} container:`, error);
   }
@@ -148,5 +151,9 @@ onMounted(loadContainers);
 // Watch and update the containers ref
 watch(containers, (newContainers) => {
   containers.value = newContainers;
+});
+
+watch(loading, (newLoading) => {
+  loading.value = newLoading;
 });
 </script>

@@ -63,5 +63,8 @@ ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8  
 ENV LANGUAGE en_US:en 
 
+# Install MailPit (SMTP testing tool)
+RUN curl -sL https://raw.githubusercontent.com/axllent/mailpit/develop/install.sh | bash
+
 # Set the working directory
 WORKDIR /var/www/html

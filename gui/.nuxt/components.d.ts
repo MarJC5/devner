@@ -4,6 +4,7 @@ type IslandComponent<T extends DefineComponent> = T & DefineComponent<{}, {refre
 interface _GlobalComponents {
       'LogTerminal': typeof import("../components/LogTerminal.vue")['default']
     'LogViewer': typeof import("../components/LogViewer.vue")['default']
+    'ContainerSingle': typeof import("../components/container/Single.vue")['default']
     'UAside': typeof import("../node_modules/@nuxt/ui-pro/components/aside/Aside.vue")['default']
     'UAsideLinks': typeof import("../node_modules/@nuxt/ui-pro/components/aside/AsideLinks.vue")['default']
     'UAuthForm': typeof import("../node_modules/@nuxt/ui-pro/components/auth/AuthForm.vue")['default']
@@ -139,6 +140,7 @@ interface _GlobalComponents {
     'NuxtRouteAnnouncer': IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
       'LazyLogTerminal': typeof import("../components/LogTerminal.vue")['default']
     'LazyLogViewer': typeof import("../components/LogViewer.vue")['default']
+    'LazyContainerSingle': typeof import("../components/container/Single.vue")['default']
     'LazyUAside': typeof import("../node_modules/@nuxt/ui-pro/components/aside/Aside.vue")['default']
     'LazyUAsideLinks': typeof import("../node_modules/@nuxt/ui-pro/components/aside/AsideLinks.vue")['default']
     'LazyUAuthForm': typeof import("../node_modules/@nuxt/ui-pro/components/auth/AuthForm.vue")['default']
@@ -288,6 +290,7 @@ declare module 'vue' {
 
 export const LogTerminal: typeof import("../components/LogTerminal.vue")['default']
 export const LogViewer: typeof import("../components/LogViewer.vue")['default']
+export const ContainerSingle: typeof import("../components/container/Single.vue")['default']
 export const UAside: typeof import("../node_modules/@nuxt/ui-pro/components/aside/Aside.vue")['default']
 export const UAsideLinks: typeof import("../node_modules/@nuxt/ui-pro/components/aside/AsideLinks.vue")['default']
 export const UAuthForm: typeof import("../node_modules/@nuxt/ui-pro/components/auth/AuthForm.vue")['default']
@@ -423,6 +426,7 @@ export const USlideovers: IslandComponent<typeof import("../node_modules/nuxt/di
 export const NuxtRouteAnnouncer: IslandComponent<typeof import("../node_modules/nuxt/dist/app/components/server-placeholder")['default']>
 export const LazyLogTerminal: typeof import("../components/LogTerminal.vue")['default']
 export const LazyLogViewer: typeof import("../components/LogViewer.vue")['default']
+export const LazyContainerSingle: typeof import("../components/container/Single.vue")['default']
 export const LazyUAside: typeof import("../node_modules/@nuxt/ui-pro/components/aside/Aside.vue")['default']
 export const LazyUAsideLinks: typeof import("../node_modules/@nuxt/ui-pro/components/aside/AsideLinks.vue")['default']
 export const LazyUAuthForm: typeof import("../node_modules/@nuxt/ui-pro/components/auth/AuthForm.vue")['default']

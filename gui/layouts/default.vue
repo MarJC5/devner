@@ -100,9 +100,9 @@ const loadContainers = async () => {
       ]);
 
     // Assign fetched data to respective variables
-    containers.value = containersData;
-    projects.value = projectsData;
-    databases.value = [...mysqlDatabases, ...postgresDatabases]; // Merge both MySQL & Postgress databases results
+    containers.value = containersData.sort((a, b) => a.getName().localeCompare(b.getName()));
+    projects.value = projectsData.sort((a, b) => a.getName().localeCompare(b.getName()))
+    databases.value = [...mysqlDatabases, ...postgresDatabases].sort((a, b) => a.getName().localeCompare(b.getName())); // Merge both MySQL & Postgress databases results and sort them by name
   } catch (error) {
     console.error("Error loading containers, projects, or databases:", error);
   }
@@ -215,6 +215,7 @@ onMounted(() => {
       <UDashboardNavbar class="!border-transparent" :ui="{ left: 'flex-1' }">
         <template #left>
           <UButton
+            to="/"
             icon="i-heroicons-square-3-stack-3d"
             size="xl"
             color="white"

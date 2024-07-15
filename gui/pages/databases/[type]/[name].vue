@@ -14,7 +14,16 @@
       </template>
       <template #description>
         <div class="flex flex-wrap gap-4" v-if="database">
-          
+          <UButton
+           v-if="database.getProject()"
+          :to="`/projects/${database.getProject().getName()}`"
+          icon="i-heroicons-folder-open"
+          size="sm"
+          color="white"
+          square
+          variant="solid"
+          label="View Project"
+        />
         </div>
       </template>
     </UPageHeader>
@@ -35,13 +44,21 @@
   
   <script setup>
   import Database from "@/models/Database";
+  import Project from "@/models/Project";
   
   const route = useRoute();
   const database = ref(null);
+  const project = ref(null);
   
   const loadDatabase = async () => {
     try {
-        database.value = await Database.fetchDatabase(route.params.type, route.params.name);
+      const [db, pjct] = await Promise.all([
+          Database.fetchDatabase(route.params.type, route.params.name),
+          Project.fetchProject(route.params.name),
+      ]);
+
+      database.value = db;
+      database.value.setProject(pjct);
     } catch (error) {
       console.error("Failed to load database details:", error);
     }

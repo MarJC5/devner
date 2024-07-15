@@ -14,6 +14,8 @@ services:
     ports:
       - '1025:1025'
       - '8025:8025'
+    extra_hosts:
+      - "mailpit.localhost:127.0.0.1"
 
   gui:
     image: node:lts
@@ -24,7 +26,7 @@ services:
       - '3000:3000'
     volumes:
       - ./gui:/app
-      - ~/.nuxtrc:/root/.nuxtrc
+      - ~/.nuxtrc:/.nuxtrc
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/localtime:/etc/localtime:ro
     command: tail -f /dev/null
@@ -69,6 +71,7 @@ services:
       - '5173:5173'
     volumes:
       # mount your Node.js projects
+      - ~/.nuxtrc:/.nuxtrc
       - ./projects:/home/dev/apps/
       - /etc/localtime:/etc/localtime:ro
 
@@ -122,6 +125,8 @@ services:
     environment:
       ADMINER_DEFAULT_SERVER: mysql_8
       TZ: "Europe/Zurich"
+    extra_hosts:
+      - "adminer.localhost:127.0.0.1"
 
 volumes:
   mysql_data:

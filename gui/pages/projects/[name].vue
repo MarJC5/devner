@@ -14,11 +14,30 @@
       </template>
       <template #description>
         <div class="flex flex-wrap gap-4" v-if="project">
-          
+          <UButton
+          @click="() => console.log('Open in VS Code')"
+          icon="i-heroicons-code-bracket-square"
+          size="sm"
+          color="white"
+          square
+          variant="solid"
+          label="VS Code"
+        />
+        <UButton
+          v-if="project.database"
+          :to="`/databases/${project.database.getType().label.toLowerCase()}/${project.database.getName()}`"
+          icon="i-heroicons-circle-stack"
+          size="sm"
+          color="white"
+          square
+          variant="solid"
+          label="Database"
+        />
         </div>
       </template>
     </UPageHeader>
     <div v-if="project">
+      
     </div>
     <div v-else>
       <UButton 

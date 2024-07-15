@@ -4,7 +4,7 @@
     class="sticky top-0 bg-white z-10 dark:bg-gray-800 mb-4 pb-4"
   />
 
-  <UPageGrid v-if="containers.length">
+  <UPageGrid v-if="containers.length && !loading">
     <UPageCard v-for="container in containers" :key="container.getId()">
       <template #header>
         {{ container.getName() }} -
@@ -16,6 +16,35 @@
       </template>
 
       <div class="flex flex-wrap gap-2">
+        <UButton
+          :to="`/containers/${container.getId()}`"
+          icon="i-heroicons-eye"
+          size="sm"
+          color="white"
+          square
+          variant="solid"
+          label="Details"
+        />
+        <UButton
+            icon="i-heroicons-envelope"
+            size="sm"
+            color="white"
+            square
+            variant="solid"
+            label="Go to Mailpit"
+            to="https://mailpit.localhost"
+            v-if="container.getName().toLowerCase() === 'mailpit'"
+          />
+          <UButton
+            icon="i-heroicons-circle-stack"
+            size="sm"
+            color="white"
+            square
+            variant="solid"
+            label="Go to Adminer"
+            to="https://adminer.localhost"
+            v-if="container.getName().toLowerCase() === 'adminer'"
+          />
         <UButton
           @click="() => performContainerAction(container, 'start')"
           v-if="!container.isRunning()"
@@ -69,15 +98,6 @@
           :loading="container.isLoading('rebuild')"
           label="Rebuild"
         />
-        <UButton
-          :to="`/containers/${container.getId()}`"
-          icon="i-heroicons-eye"
-          size="sm"
-          color="white"
-          square
-          variant="solid"
-          label="Details"
-        />
       </div>
     </UPageCard>
   </UPageGrid>
@@ -95,14 +115,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
 import Container from "@/models/Container";
 
 const containers = ref([]);
+const loading = ref(true);
 
 const loadContainers = async () => {
   try {
-    containers.value = await Container.all();
+    containers.value = (await Container.all()).sort((a, b) => a.getName().localeCompare(b.getName()));
+    loading.value = false;
   } catch (error) {
     console.error("Failed to load containers:", error);
   }
@@ -111,7 +132,9 @@ const loadContainers = async () => {
 const performContainerAction = async (container, action) => {
   try {
     await container[action]();
+    loading.value = true;
     loadContainers();
+    loading.value = false;
   } catch (error) {
     console.error(`Failed to ${action} container:`, error);
   }
@@ -122,5 +145,9 @@ onMounted(loadContainers);
 // Watch and update the containers ref
 watch(containers, (newContainers) => {
   containers.value = newContainers;
+});
+
+watch(loading, (newLoading) => {
+  loading.value = newLoading;
 });
 </script>

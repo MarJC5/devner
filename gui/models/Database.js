@@ -1,4 +1,5 @@
 import Container from "./Container.js";
+import Project from "./Project.js";
 
 class Database {
   constructor(databaseData) {
@@ -8,8 +9,10 @@ class Database {
     this.host = databaseData.host;
     this.containerName = databaseData.containerName;
     this.tables = databaseData.tables || [];
+    this.project = databaseData.project || null;
 
     this.loading = {
+      project: false,
       create: false,
       delete: false,
     };
@@ -153,17 +156,35 @@ class Database {
   getType() {
     return this.type.includes("PostgreSQL") ? {
       label: "PostgreSQL",
-      color: "blue",
+      color: "cyan",
     } : {
       label: "MySQL",
       color: "orange",
     };
   }
 
+  /**
+   * Get project
+   *
+   * @returns void
+   */
+  getProject() {
+    return this.project;
+  };
+
+  /**
+   * Set project
+   *
+   * @returns void
+   */
+  setProject(project) {
+    this.project = project;
+  };
+
   static findType(containerName) {
     return containerName.includes("postgres") ? {
       label: "PostgreSQL",
-      color: "blue",
+      color: "cyan",
     } : {
       label: "MySQL",
       color: "orange",
@@ -350,6 +371,13 @@ class Database {
       console.error("Error deleting table:", error);
       return [];
     }
+  }
+
+  /**
+   * Actions status
+   */
+  isLoading(action) {
+    return this.loading[action];
   }
 }
 

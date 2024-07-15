@@ -1,0 +1,5 @@
+const scrollbars = ".nuxt-ui-scrollbars ::-webkit-scrollbar{background-color:transparent;height:.6em;width:.6em}.nuxt-ui-scrollbars ::-webkit-scrollbar-track{--tw-bg-opacity:1;background-color:rgb(var(--color-gray-100)/var(--tw-bg-opacity))}.nuxt-ui-scrollbars ::-webkit-scrollbar-thumb{border-radius:.6em;--tw-bg-opacity:1;background-color:rgb(var(--color-gray-300)/var(--tw-bg-opacity))}.nuxt-ui-scrollbars ::-webkit-scrollbar-thumb:hover{--tw-bg-opacity:1;background-color:rgb(var(--color-gray-400)/var(--tw-bg-opacity))}.nuxt-ui-scrollbars.dark ::-webkit-scrollbar-track{--tw-bg-opacity:1;background-color:rgb(var(--color-gray-800)/var(--tw-bg-opacity))}.nuxt-ui-scrollbars.dark ::-webkit-scrollbar-thumb{--tw-bg-opacity:1;background-color:rgb(var(--color-gray-700)/var(--tw-bg-opacity))}.nuxt-ui-scrollbars.dark ::-webkit-scrollbar-thumb:hover{--tw-bg-opacity:1;background-color:rgb(var(--color-gray-600)/var(--tw-bg-opacity))}";
+export {
+  scrollbars as default
+};
+//# sourceMappingURL=entry-styles-3.mjs-D7HUQoAJ.js.map
