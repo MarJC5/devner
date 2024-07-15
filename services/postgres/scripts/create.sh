@@ -10,20 +10,13 @@ echo "Please enter the database password:"
 read -s dbpass
 
 # Check if dblink extension is available
-psql -U postgres -d postgres -c "CREATE EXTENSION IF NOT EXISTS dblink;"
+psql -U devner -d devner -c "CREATE EXTENSION IF NOT EXISTS dblink;"
 
-# Login to PostgreSQL as the postgres user and execute the commands
-psql -U postgres -d postgres <<EOF
--- Create the database if it doesn't exist
-DO \$\$
-BEGIN
-   IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$dbname') THEN
-      EXECUTE 'CREATE DATABASE $dbname WITH ENCODING ''UTF8''';
-   END IF;
-END
-\$\$;
+# Login to PostgreSQL as the postgres user and create the database if it doesn't exist
+psql -U devner -d devner -tc "SELECT 1 FROM pg_database WHERE datname = '$dbname'" | grep -q 1 || psql -U devner -c "CREATE DATABASE $dbname WITH ENCODING 'UTF8';"
 
--- Create the user if it doesn't exist
+# Create the user if it doesn't exist
+psql -U devner -d devner <<EOF
 DO \$\$
 BEGIN
    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$dbuser') THEN

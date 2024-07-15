@@ -23,31 +23,36 @@ class Database {
   static async all(name) {
     try {
       const container = await Container.fetchContainerByName(`${name}_devner`);
-      const rawDatabases = await container.cmd(
-        `mysql --defaults-file=/.my.cnf -e "SHOW DATABASES;"`,
-        true,
-        false
-      );
+      const dbType = this.findType(container.name).label;
+      let rawDatabases;
 
-      // Remove BDatabase if information_schema, performance_schema, mysql, and sys or empty
-      const cleanedDatabases = rawDatabases.map((db) =>
-        db.Database.replace(/[^\x20-\x7E]/g, "").trim()
-      );
+      if (dbType === 'MySQL') {
+        rawDatabases = await container.cmd(
+          `mysql --defaults-file=/.my.cnf -e "SHOW DATABASES;"`,
+          true,
+          false
+        );
+        // Remove unwanted databases and clean the output
+        rawDatabases = rawDatabases
+          .map((db) => db.Database.replace(/[^\x20-\x7E]/g, "").trim())
+          .filter((dbName) => !["information_schema", "performance_schema", "mysql", "sys", ""].includes(dbName));
+      } else {
+        rawDatabases = await container.cmd(
+          `psql -U devner -c "\\l"`,
+          true,
+          false
+        );
 
-      // Remove unwanted databases
-      const databases = cleanedDatabases.filter(
-        (dbName) =>
-          ![
-            "information_schema",
-            "performance_schema",
-            "mysql",
-            "sys",
-            "",
-          ].includes(dbName)
-      );
+        // Parse PostgreSQL output
+        const parsedDatabases = this.parsePostgresOutput(rawDatabases);
 
-      // Filter out warning and empty lines, and map to database names
-      return await this.identifyDatabase(container, databases, name);
+        // Filter out template databases
+        rawDatabases = parsedDatabases
+          .map((db) => db.Name)
+          .filter((dbName) => !["postgres", "template0", "template1", "devner"].includes(dbName));
+      }
+
+      return await this.identifyDatabase(container, rawDatabases, name);
     } catch (error) {
       console.error("Error fetching databases:", error);
       return [];
@@ -55,11 +60,68 @@ class Database {
   }
 
   /**
+   * Parse PostgreSQL command output
+   * @param {Array<Object>} output
+   * @returns {Array<Object>}
+   */
+  static parsePostgresOutput(output) {
+    const headers = ["Name", "Owner", "Encoding", "Collate", "Ctype", "Access privileges"];
+    const rows = [];
+    let currentRow = {};
+    let isHeaderProcessed = false;
+    let separatorLine = false;
+
+    output.forEach((lineObj) => {
+      const line = lineObj["List of databases"];
+      if (!isHeaderProcessed) {
+        if (line.includes("Name") && line.includes("Owner")) {
+          isHeaderProcessed = true;
+        }
+        return;
+      }
+
+      if (!separatorLine) {
+        if (/^-+\+-+\+-+\+-+\+-+\+-+$/.test(line)) {
+          separatorLine = true;
+          return;
+        }
+      }
+
+      if (line.includes("rows)")) {
+        return;
+      }
+
+      const values = line.split("|").map((value) => value.trim());
+
+      if (values.length === headers.length) {
+        if (Object.keys(currentRow).length > 0) {
+          rows.push(currentRow);
+        }
+        currentRow = {};
+        headers.forEach((header, index) => {
+          currentRow[header] = values[index];
+        });
+      } else {
+        headers.forEach((header, index) => {
+          if (values[index]) {
+            currentRow[header] = (currentRow[header] || '') + " " + values[index];
+          }
+        });
+      }
+    });
+
+    if (Object.keys(currentRow).length > 0) {
+      rows.push(currentRow);
+    }
+
+    return rows.filter(row => row.Name && row.Name !== "");
+  }
+
+  /**
    * Get a database by its name
    *
    * @returns {Database}
    */
-
   static async fetchDatabase(containerName, name) {
     const databases = await this.all(containerName);
     return databases.find((database) => database.getName() === name);
@@ -89,35 +151,27 @@ class Database {
    * @returns {string}
    */
   getType() {
-    if (this.type.includes("postgres")) {
-      return {
-        label: "PostgreSQL",
-        color: "blue",
-      };
-    }
-
-    return {
+    return this.type.includes("PostgreSQL") ? {
+      label: "PostgreSQL",
+      color: "blue",
+    } : {
       label: "MySQL",
       color: "orange",
     };
   }
 
   static findType(containerName) {
-    if (containerName.includes("postgres")) {
-      return {
-        label: "PostgreSQL",
-        color: "blue",
-      };
-    }
-
-    return {
+    return containerName.includes("postgres") ? {
+      label: "PostgreSQL",
+      color: "blue",
+    } : {
       label: "MySQL",
       color: "orange",
     };
   }
 
   /**
-   * idenfy database
+   * Identify database
    *
    * @param {Container} container
    * @param {Array<string>} rawDatabases
@@ -125,49 +179,67 @@ class Database {
    * @returns {Array<Database>}
    */
   static async identifyDatabase(container, rawDatabases, name) {
-    // Filter out warning and empty lines, and map to database names
     try {
-      // Use Promise.all to wait for all database objects to be created
       const databaseObjects = await Promise.all(
         rawDatabases.map(async (dbName) => {
-          const tables = await container.cmd(
-            `mysql --defaults-file=/.my.cnf -e "SHOW TABLES;" ${dbName};`
-          );
+          const dbType = this.findType(`${name}_devner`).label;
+          let tables;
 
-          // Remove first line of output as it is the table header
-          tables.shift();
+          if (dbType === 'MySQL') {
+            tables = await container.cmd(
+              `mysql --defaults-file=/.my.cnf -e "SHOW TABLES;" ${dbName};`
+            );
+            tables.shift();
+          } else {
+            tables = await container.cmd(
+              `psql -U devner -d ${dbName} -c "\\dt"`
+            );
+            tables = tables.map(item => item["List of databases"]).map(line => line.trim()).filter(line => line).slice(3, -1).map(table => table.split('|')[1].trim());
+          }
 
           return new Database({
             name: dbName,
-            type: this.findType(`${name}_devner`).label,
+            type: dbType,
             port: container.getPorts(false)[0],
             host: name,
             containerName: `${name}`,
-            tables: tables.map((table) => table.trim()),
+            tables: tables,
           });
         })
       );
 
       return databaseObjects;
     } catch (error) {
-      console.error("Error fetching databases:", error);
+      console.error("Error identifying databases:", error);
       return [];
     }
   }
 
   /**
-   * Inscpect a table
+   * Inspect a table
    *
    * @param {string} tableName
    * @returns {string}
    */
   async inspectTable(tableName) {
     const container = await Container.fetchContainerByName(this.containerName);
-    const tableDescription = await container.cmd(
-      `mysql --defaults-file=/.my.cnf -e "DESCRIBE ${tableName}" ${this.name};`,
-      true,
-      false
-    );
+    const dbType = this.getType().label;
+    let tableDescription;
+    
+    if (dbType === 'MySQL') {
+      tableDescription = await container.cmd(
+        `mysql --defaults-file=/.my.cnf -e "DESCRIBE ${tableName}" ${this.name};`,
+        true,
+        false
+      );
+    } else {
+      tableDescription = await container.cmd(
+        `psql -U devner -d ${this.name} -c "\\d ${tableName}"`,
+        true,
+        false
+      );
+    }
+
     return tableDescription;
   }
 
@@ -179,12 +251,19 @@ class Database {
    */
   static async createDatabase(containerName, dbName) {
     try {
-      const container = await Container.fetchContainerByName(
-        `${containerName}_devner`
-      );
-      await container.cmd(
-        `mysql --defaults-file=/.my.cnf -e "CREATE DATABASE ${dbName};"`
-      );
+      const container = await Container.fetchContainerByName(`${containerName}_devner`);
+      const dbType = this.findType(container.name).label;
+
+      if (dbType === 'MySQL') {
+        await container.cmd(
+          `mysql --defaults-file=/.my.cnf -e "CREATE DATABASE ${dbName};"`
+        );
+      } else {
+        await container.cmd(
+          `psql -U devner -c "CREATE DATABASE ${dbName};"`
+        );
+      }
+
       return await this.all(containerName);
     } catch (error) {
       console.error("Error creating database:", error);
@@ -200,12 +279,19 @@ class Database {
    */
   static async deleteDatabase(containerName, dbName) {
     try {
-      const container = await Container.fetchContainerByName(
-        `${containerName}_devner`
-      );
-      await container.cmd(
-        `mysql --defaults-file=/.my.cnf -e "DROP DATABASE ${dbName};"`
-      );
+      const container = await Container.fetchContainerByName(`${containerName}_devner`);
+      const dbType = this.findType(container.name).label;
+
+      if (dbType === 'MySQL') {
+        await container.cmd(
+          `mysql --defaults-file=/.my.cnf -e "DROP DATABASE ${dbName};"`
+        );
+      } else {
+        await container.cmd(
+          `psql -U devner -c "DROP DATABASE ${dbName};"`
+        );
+      }
+
       return await this.all(containerName);
     } catch (error) {
       console.error("Error deleting database:", error);
@@ -221,10 +307,18 @@ class Database {
    */
   async createTable(tableName, tableSchema) {
     const container = await Container.fetchContainerByName(this.containerName);
+    const dbType = this.getType().label;
     try {
-      await container.cmd(
-        `mysql --defaults-file=/.my.cnf -e "CREATE TABLE ${this.name}.${tableName} (${tableSchema});"`
-      );
+      if (dbType === 'MySQL') {
+        await container.cmd(
+          `mysql --defaults-file=/.my.cnf -e "CREATE TABLE ${this.name}.${tableName} (${tableSchema});"`
+        );
+      } else {
+        await container.cmd(
+          `psql -U devner -d ${this.name} -c "CREATE TABLE ${tableName} (${tableSchema});"`
+        );
+      }
+
       return await this.inspectTable(tableName);
     } catch (error) {
       console.error("Error creating table:", error);
@@ -236,14 +330,21 @@ class Database {
    * Delete a table
    *
    * @param {string} tableName
-   * @param {string} tableSchema
    */
   async deleteTable(tableName) {
     const container = await Container.fetchContainerByName(this.containerName);
+    const dbType = this.getType().label;
     try {
-      await container.cmd(
-        `mysql --defaults-file=/.my.cnf -e "DROP TABLE ${this.name}.${tableName};"`
-      );
+      if (dbType === 'MySQL') {
+        await container.cmd(
+          `mysql --defaults-file=/.my.cnf -e "DROP TABLE ${this.name}.${tableName};"`
+        );
+      } else {
+        await container.cmd(
+          `psql -U devner -d ${this.name} -c "DROP TABLE ${tableName};"`
+        );
+      }
+
       return await this.inspectTable(tableName);
     } catch (error) {
       console.error("Error deleting table:", error);

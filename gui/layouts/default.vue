@@ -5,12 +5,11 @@ import Project from "@/models/Project";
 import Database from "@/models/Database";
 
 const containers = ref([]);
-const otherContainers = ref([]);
 const projects = ref([]);
 const databases = ref([]);
 
 const containersCollapsed = ref(false);
-const otherContainersCollapsed = ref(true);
+const otherContainersCollapsed = ref(false);
 const projectsCollapsed = ref(false);
 const databasesCollapsed = ref(false);
 

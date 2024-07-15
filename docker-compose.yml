@@ -108,6 +108,7 @@ services:
       POSTGRES_USER: devner
       POSTGRES_PASSWORD: devner
       POSTGRES_DB: devner
+      PGPASSFILE: /.pgpass
       TZ: "Europe/Zurich"
 
   adminer:
