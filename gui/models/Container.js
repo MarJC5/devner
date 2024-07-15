@@ -2,16 +2,17 @@ import stripAnsi from 'strip-ansi';
 
 class Container {
   constructor(containerData) {
-    this.id = containerData.Id;
-    this.created = containerData.Created;
-    this.name = containerData.Name;
-    this.status = containerData.State.Status;
-    this.pid = containerData.State.Pid;
-    this.startedAt = containerData.State.StartedAt;
-    this.image = containerData.Image;
-    this.ports = containerData.NetworkSettings.Ports;
-    this.labels = containerData.Config.Labels;
-    this.network = containerData.NetworkSettings.Networks;
+    this.id = containerData.Id || 0;
+    this.created = containerData.Created || "";
+    this.name = containerData.Name || "";
+    this.status = containerData.State.Status || "";
+    this.pid = containerData.State.Pid || 0;
+    this.startedAt = containerData.State.StartedAt || "";
+    this.image = containerData.Image || "";
+    this.ports = containerData.NetworkSettings.Ports || {};
+    this.labels = containerData.Config.Labels || {};
+    this.network = containerData.NetworkSettings.Networks || {};
+    this.project = this.labels["com.docker.compose.project"] || "";
 
     // Loading state for actions
     this.loading = {
@@ -75,6 +76,7 @@ class Container {
         }
       })
     ).then((results) => results.filter((container) => container !== undefined));
+
     return containers;
   }
 
@@ -83,15 +85,31 @@ class Container {
     const containers = await Promise.all(
       data.map(async (containerData) => {
         const model = await Container.fetchContainer(containerData.Id);
-        if (
-          !model.getNetworks().devner
-        ) {
+        if (!model.getNetworks().devner) {
           return model;
         }
       })
     ).then((results) => results.filter((container) => container !== undefined));
-    return containers;
-  }
+  
+    // Group the containers by project name
+    const groupedContainers = containers.reduce((acc, container) => {
+      const project = container.project;
+      if (!acc[project]) {
+        acc[project] = [];
+      }
+      acc[project].push(container);
+      return acc;
+    }, {});
+  
+    // Transform the grouped containers into the desired format
+    const formattedContainers = Object.entries(groupedContainers).map(([label, containers]) => ({
+      label: label.charAt(0).toUpperCase() + label.slice(1),
+      icon: "i-heroicons-cube-transparent",
+      containers,
+    }));
+  
+    return formattedContainers;
+  }  
 
   formatDate(isoString) {
     const date = new Date(isoString);
