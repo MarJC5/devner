@@ -1,209 +1,40 @@
 <script setup>
-import { ref, onMounted, watch } from "vue";
-import Container from "@/models/Container";
-import Project from "@/models/Project";
-import Database from "@/models/Database";
+import { useContainersStore } from '~/stores/containers';
+import { useProjectsStore } from '~/stores/projects';
+import { useDatabasesStore } from '~/stores/databases';
+import { useLinksStore } from '~/stores/links';
 
-const containers = ref([]);
-const projects = ref([]);
-const databases = ref([]);
-
-const containersCollapsed = ref(false);
-const otherContainersCollapsed = ref(false);
-const projectsCollapsed = ref(false);
-const databasesCollapsed = ref(false);
-
-const loadCollapsedState = (key, ref) => {
-  const savedState = localStorage.getItem(key);
-  ref.value = savedState === "true";
-};
-
-const saveCollapsedState = (key, newValue) => {
-  localStorage.setItem(key, newValue);
-};
-
-const links = ref([
-  {
-    id: "dashboard",
-    label: "Dashboard",
-    icon: "i-heroicons-rectangle-group",
-    to: "/",
-  },
-]);
-
-const containersLinks = ref([
-  {
-    label: "Containers",
-    icon: "i-heroicons-cube",
-    children: [
-      {
-        id: "containers",
-        label: "Overview",
-        to: "/containers",
-      },
-    ],
-  },
-]);
-
-const otherContainersLinks = ref([
-  {
-    id: "other-containers",
-    label: "Other Containers",
-    icon: "i-heroicons-cube-transparent",
-    children: [
-      {
-        id: "other-containers",
-        label: "Overview",
-        to: "/other-containers",
-      },
-    ],
-  },
-]);
-
-const projectsLinks = ref([
-  {
-    label: "Projects",
-    icon: "i-heroicons-folder",
-    children: [
-      {
-        id: "projects",
-        label: "Overview",
-        to: "/projects",
-      },
-    ],
-  },
-]);
-
-const databasesLinks = ref([
-  {
-    label: "Databases",
-    icon: "i-heroicons-circle-stack",
-    children: [
-      {
-        id: "databases",
-        label: "Overview",
-        to: "/databases",
-      },
-    ],
-  },
-]);
-
-const loadContainers = async () => {
-  try {
-    // Fetch containers, projects, and databases in parallel
-    const [containersData, projectsData, mysqlDatabases, postgresDatabases] =
-      await Promise.all([
-        Container.all(),
-        Project.all(),
-        Database.all("mysql"),
-        Database.all("postgres"),
-      ]);
-
-    // Assign fetched data to respective variables
-    containers.value = containersData.sort((a, b) => a.getName().localeCompare(b.getName()));
-    projects.value = projectsData.sort((a, b) => a.getName().localeCompare(b.getName()))
-    databases.value = [...mysqlDatabases, ...postgresDatabases].sort((a, b) => a.getName().localeCompare(b.getName())); // Merge both MySQL & Postgress databases results and sort them by name
-  } catch (error) {
-    console.error("Error loading containers, projects, or databases:", error);
-  }
-};
-
-watch(containers, (newContainers) => {
-  // Watch the containers ref and update containersLinks accordingly
-  containersLinks.value = [
-    {
-      label: "Containers",
-      icon: "i-heroicons-cube",
-      children: [
-        {
-          id: "containers",
-          label: "Overview",
-          to: "/containers",
-        },
-        ...newContainers.map((container) => ({
-          id: container.getId(),
-          label: container.getName(),
-          to: `/containers/${container.getId()}`,
-          badge: {
-            color: container.isRunning() ? "green" : "red",
-            label: container.getStatus(),
-          },
-        })),
-      ],
-    },
-  ];
-});
-
-watch(projects, (newProjects) => {
-  projectsLinks.value = [
-    {
-      id: "projects",
-      label: "Projects",
-      icon: "i-heroicons-folder",
-      children: [
-        {
-          id: "projects",
-          label: "Overview",
-          to: "/projects",
-        },
-        ...newProjects.map((project) => ({
-          id: project.getPath(),
-          label: project.getName(),
-          to: `/projects/${project.getName()}`,
-          badge: {
-            color: project.getType().color,
-            label: project.getType().label,
-          },
-        })),
-      ],
-    },
-  ];
-});
-
-watch(databases, (newDatabases) => {
-  databasesLinks.value = [
-    {
-      label: "Databases",
-      icon: "i-heroicons-circle-stack",
-      children: [
-        {
-          id: "databases",
-          label: "Overview",
-          to: "/databases",
-        },
-        ...newDatabases.map((database) => ({
-          id: database.getName(),
-          label: database.getName(),
-          to: `/databases/${database.getContainerName()}/${database.getName()}`,
-          badge: {
-            color: database.getType().color,
-            label: database.getType().label,
-          },
-        })),
-      ],
-    },
-  ];
-});
-
-watch(containersCollapsed, (newValue) => {
-  saveCollapsedState("containers-collapsed", newValue);
-});
-
-watch(projectsCollapsed, (newValue) => {
-  saveCollapsedState("projects-collapsed", newValue);
-});
-
-watch(databasesCollapsed, (newValue) => {
-  saveCollapsedState("databases-collapsed", newValue);
-});
+const containersStore = useContainersStore();
+const projectsStore = useProjectsStore();
+const databasesStore = useDatabasesStore();
+const linksStore = useLinksStore();
 
 onMounted(() => {
-  loadCollapsedState("containers-collapsed", containersCollapsed);
-  loadCollapsedState("projects-collapsed", projectsCollapsed);
-  loadCollapsedState("databases-collapsed", databasesCollapsed);
-  loadContainers();
+  // initialize links store
+  linksStore.initialize();
+
+  // load containers, projects, and databases
+  containersStore.loadContainers().then(() => {
+    linksStore.updateContainersLinks(containersStore.containers);
+  });
+  projectsStore.loadProjects().then(() => {
+    linksStore.updateProjectsLinks(projectsStore.projects);
+  });
+  databasesStore.loadDatabases().then(() => {
+    linksStore.updateDatabasesLinks(databasesStore.databases);
+  });
+
+  // auto update data every x minute
+  linksStore.autoUpdate(60 * 3);
 });
+
+const links = computed(() => linksStore.links);
+const containersLinks = computed(() => linksStore.containersLinks);
+const otherContainersLinks = computed(() => linksStore.otherContainersLinks);
+const projectsLinks = computed(() => linksStore.projectsLinks);
+const databasesLinks = computed(() => linksStore.databasesLinks);
 </script>
+
 
 <template>
   <UDashboardLayout>
@@ -234,24 +65,20 @@ onMounted(() => {
 
         <UNavigationAccordion
           :links="containersLinks"
-          :defaultOpen="containersCollapsed"
         />
 
         <UNavigationAccordion
           :links="projectsLinks"
-          :defaultOpen="projectsCollapsed"
         />
 
         <UNavigationAccordion
           :links="databasesLinks"
-          :defaultOpen="databasesCollapsed"
         />
 
         <div class="flex-1" />
 
         <UNavigationAccordion
           :links="otherContainersLinks"
-          :defaultOpen="otherContainersCollapsed"
         />
       </UDashboardSidebar>
     </UDashboardPanel>

@@ -67,6 +67,10 @@ nuxt:
 	@echo "${GREEN}Entering nuxt container...${RESET}"
 	@${DOCKER} exec gui bash
 
+gui-clean:
+	@echo "${GREEN}Entering nuxt container...${RESET}"
+	@${DOCKER} exec gui bash -c "npx nuxi cleanup"
+
 gui-dev:
 	@echo "${GREEN}Entering nuxt container...${RESET}"
 	@${DOCKER} exec gui bash -c "yarn dev"

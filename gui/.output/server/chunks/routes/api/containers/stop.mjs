@@ -1,5 +1,4 @@
-import { d as defineEventHandler } from '../../../runtime.mjs';
-import { d as dockerService } from '../../../_/docker.mjs';
+import { d as defineEventHandler, a as dockerService } from '../../../runtime.mjs';
 import 'node:http';
 import 'node:https';
 import 'events';

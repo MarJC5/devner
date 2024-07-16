@@ -39,18 +39,8 @@
           label="Details"
         />
         <UButton
-          @click="() => performProjectAction(project, 'code')"
-          :icon="project.isLoading('code') ? 'i-heroicons-spinner' : 'i-heroicons-code-bracket-square'"
-          size="sm"
-          color="white"
-          square
-          variant="solid"
-          :loading="project.isLoading('code')"
-          label="VS Code"
-        />
-        <UButton
           v-if="project.getDatabase()"
-          :to="`/databases/${project.getDatabase().getType().label.toLowerCase()}/${project.getDatabase().getName()}`"
+          :to="`/databases/${project.getDatabase().getTypeUrl()}/${project.getDatabase().getName()}`"
           icon="i-heroicons-circle-stack"
           size="sm"
           color="white"
@@ -85,39 +75,18 @@
 </template>
 
 <script setup>
-import Project from "@/models/Project";
+import { useProjectsStore } from '~/stores/projects';
 
-const projects = ref([]);
-const loading = ref(true);
+const projectsStore = useProjectsStore();
 
-const loadProjects = async () => {
-  try {
-    projects.value = await Project.all();
-    loading.value = false;
-  } catch (error) {
-    console.error("Failed to load projects:", error);
-  }
-};
+onMounted(() => {
+  projectsStore.loadProjects();
+});
 
 const performProjectAction = async (project, action) => {
-  try {
-    await project[action]();
-    loading.value = true;
-    loadProjects();
-    loading.value = false;
-  } catch (error) {
-    console.error(`Failed to ${action} project:`, error);
-  }
+  await projectsStore.performProjectAction(project, action);
 };
 
-onMounted(loadProjects);
-
-// Watch and update the projects ref
-watch(projects, (newProjects) => {
-  projects.value = newProjects;
-});
-
-watch(loading, (newLoading) => {
-  loading.value = newLoading;
-});
+const projects = computed(() => projectsStore.projects);
+const loading = computed(() => projectsStore.loading);
 </script>

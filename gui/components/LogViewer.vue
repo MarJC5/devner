@@ -5,7 +5,7 @@
   </template>
   
   <script setup>
-  import { socket } from '@/utils/socket';
+  import { socket } from '~/utils/socket';
   
   const props = defineProps({
     containerId: {
@@ -30,7 +30,7 @@
   };
   
   const handleConnect = () => {
-    console.log('Reconnected to server');
+    console.log('Reconnected to ~/server');
     logs.value = []; // Clear logs on reconnect to avoid duplicate entries
     connectSocket();
   };
@@ -49,7 +49,7 @@
     socket.on('error', handleError);
     socket.on('connect', handleConnect);
     socket.on('disconnect', () => {
-      console.log('Disconnected from server');
+      console.log('Disconnected from ~/server');
     });
 
     scrollToBottom();
@@ -77,4 +77,4 @@
     font-family: monospace; /* Use a monospaced font for logs */
   }
   </style>
-  ../utils/socket
+  ../utils/socket~/app/utils/socket

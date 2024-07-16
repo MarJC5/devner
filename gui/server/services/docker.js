@@ -3,6 +3,10 @@ import Docker from 'dockerode';
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
 export default {
+    getDocker() {
+        return docker;
+    },
+
     /**
      * Get all containers related to devner
      * 

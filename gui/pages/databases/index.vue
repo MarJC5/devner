@@ -2,7 +2,7 @@
   <UPageHeader
     title="Databases"
     class="sticky top-0 bg-white z-10 dark:bg-gray-800 mb-4 pb-4"
-    >
+  >
     <template #description>
       <div class="flex flex-wrap gap-2">
         <UButton
@@ -30,7 +30,7 @@
       </template>
       <div class="flex flex-wrap gap-2">
         <UButton
-          :to="`/databases/${database.getType().label.toLowerCase()}/${database.getName()}`"
+          :to="`/databases/${database.getTypeUrl()}/${database.getName()}`"
           icon="i-heroicons-eye"
           size="sm"
           color="white"
@@ -69,61 +69,24 @@
       block
       variant="ghost"
       loading>
-        Loading databases...
+      Loading databases...
     </UButton>
   </div>
 </template>
 
 <script setup>
-import Database from "@/models/Database";
-import Project from "@/models/Project";
+import { useDatabasesStore } from '~/stores/databases';
 
-const databases = ref([]);
-const loading = ref(true);
+const databasesStore = useDatabasesStore();
 
-const loadDatabases = async () => {
-  try {
-    // Fetch containers, projects, and databases in parallel
-    const [mysqlDatabases, postgresDatabases, projects] =
-      await Promise.all([
-        Database.all("mysql"),
-        Database.all("postgres"),
-        Project.all(),
-      ]);
+onMounted(() => {
+  databasesStore.loadDatabases();
+});
 
-      // Merge both MySQL & Postgress databases results and sort them by name
-      databases.value = [...mysqlDatabases, ...postgresDatabases].sort((a, b) => a.getName().localeCompare(b.getName()));
-
-      // Add projects
-      databases.value.forEach((database) => {
-        database.setProject(projects.find((project) => project.getName() === database.getName()));
-      });
-
-      loading.value = false;
-  } catch (error) {
-    console.error("Failed to load databases:", error);
-  }
-};
+const databases = computed(() => databasesStore.databases);
+const loading = computed(() => databasesStore.loading);
 
 const performDatabaseAction = async (database, action) => {
-  try {
-    await database[action]();
-    loading.value = true;
-    loadDatabases();
-    loading.value = false;
-  } catch (error) {
-    console.error(`Failed to ${action} database:`, error);
-  }
+  await databasesStore.performDatabaseAction(database, action);
 };
-
-onMounted(loadDatabases);
-
-// Watch and update the databases ref
-watch(databases, (newProjects) => {
-  databases.value = newProjects;
-});
-
-watch(loading, (newLoading) => {
-  loading.value = newLoading;
-});
 </script>

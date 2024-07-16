@@ -1,4 +1,4 @@
-import { C as Container } from './Container.mjs';
+import { C as Container, D as Database } from './Database.mjs';
 
 class Project {
   constructor(projectData) {
@@ -6,6 +6,7 @@ class Project {
     this.path = projectData.path;
     this.type = projectData.type;
     this.directories = projectData.directories || [];
+    this.database = projectData.database || null;
     this.loading = {
       create: false,
       delete: false,
@@ -32,7 +33,7 @@ class Project {
     const container = await Container.fetchContainerByName("frankenphp_devner");
     const filesAndDirs = await container.cmd(`ls -a /var/www/html/${name}/`);
     const project = this.groupProject(name, filesAndDirs);
-    return project;
+    return project || null;
   }
   /**
   * Perform an action on the container
@@ -42,7 +43,7 @@ class Project {
   async performAction(action, body = {}) {
     this.loading[action] = true;
     console.log(`Performing action ${action} on project with name: ${this.name}`);
-    await $fetch(`/api/project/${this.name}/${action}`, { method: "POST", body });
+    await $fetch(`/api/projects/${this.name}/${action}`, { method: "POST", body });
     this.loading[action] = false;
   }
   async code() {
@@ -79,12 +80,28 @@ class Project {
     return this.type;
   }
   /**
+   * Get project database
+   * 
+   * @returns {Database}
+   */
+  getDatabase() {
+    return this.database;
+  }
+  /**
+   * Set project database
+   * 
+   * @param {Database} database
+   */
+  setDatabase(database) {
+    this.database = database;
+  }
+  /**
    * Group projects by root directory
    *
    * @param {*} filesAndDirs
    * @returns
    */
-  static groupProjects(filesAndDirs) {
+  static async groupProjects(filesAndDirs) {
     const directories = {};
     const projects = [];
     let currentProject = "";
@@ -99,27 +116,42 @@ class Project {
       }
     });
     for (const directory in directories) {
-      if (directory === "." || directory === ".." || directory === "gui") {
+      if (directory === "." || directory === ".." || directory === "gui" || directory === "app") {
         continue;
       }
+      const [mysqlDatabases, postgresDatabases] = await Promise.all([
+        Database.all("mysql"),
+        Database.all("postgres")
+      ]);
+      const databases = [...mysqlDatabases, ...postgresDatabases].sort((a, b) => a.getName().localeCompare(b.getName()));
       projects.push(
         new Project({
           name: directory,
           path: `/var/www/html/${directory}`,
           type: this.identifyProject(directories[directory]),
-          directories: directories[directory]
+          directories: directories[directory],
+          database: databases.find((database) => database.getName() === directory) || null
         })
       );
     }
     return projects;
   }
-  static groupProject(name, filesAndDirs) {
+  static async groupProject(name, filesAndDirs) {
     const directories = filesAndDirs.map((item) => item.trim());
+    if (directories.length === 0) {
+      return null;
+    }
+    const [mysqlDatabases, postgresDatabases] = await Promise.all([
+      Database.all("mysql"),
+      Database.all("postgres")
+    ]);
+    const databases = [...mysqlDatabases, ...postgresDatabases].sort((a, b) => a.getName().localeCompare(b.getName()));
     return new Project({
       name,
       path: `/var/www/html/${name}`,
       type: this.identifyProject(directories),
-      directories
+      directories,
+      database: databases.find((database) => database.getName() === name) || null
     });
   }
   /**

@@ -115,39 +115,18 @@
 </template>
 
 <script setup>
-import Container from "@/models/Container";
+import { useContainersStore } from '~/stores/containers';
 
-const containers = ref([]);
-const loading = ref(true);
+const containersStore = useContainersStore();
 
-const loadContainers = async () => {
-  try {
-    containers.value = (await Container.all()).sort((a, b) => a.getName().localeCompare(b.getName()));
-    loading.value = false;
-  } catch (error) {
-    console.error("Failed to load containers:", error);
-  }
-};
+onMounted(() => {
+  containersStore.loadContainers();
+});
+
+const containers = computed(() => containersStore.containers);
+const loading = computed(() => containersStore.loading);
 
 const performContainerAction = async (container, action) => {
-  try {
-    await container[action]();
-    loading.value = true;
-    loadContainers();
-    loading.value = false;
-  } catch (error) {
-    console.error(`Failed to ${action} container:`, error);
-  }
+  await containersStore.performContainerAction(container, action);
 };
-
-onMounted(loadContainers);
-
-// Watch and update the containers ref
-watch(containers, (newContainers) => {
-  containers.value = newContainers;
-});
-
-watch(loading, (newLoading) => {
-  loading.value = newLoading;
-});
 </script>

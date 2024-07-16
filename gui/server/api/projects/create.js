@@ -1,5 +1,5 @@
-import Container from "@/models/Container";
-import Project from "@/models/Project";
+import Container from "~/utils/Container.js";
+import Project from "~/utils/Project.js";
 
 export default defineEventHandler(async (event) => {
     if (event.node.req.method !== 'POST') {

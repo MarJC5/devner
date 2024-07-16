@@ -110,6 +110,9 @@
       "#color-mode-options": [
         "./color-mode-options.mjs"
       ],
+      "pinia": [
+        "../node_modules/pinia/dist/pinia"
+      ],
       "#vue-router": [
         "../node_modules/vue-router"
       ],
@@ -123,7 +126,7 @@
         "./tailwind.config/*"
       ],
       "#app-manifest": [
-        "./manifest/meta/dev"
+        "./manifest/meta/dev.json"
       ],
       "#build": [
         "."
@@ -173,7 +176,7 @@
     "../node_modules/@nuxtjs/color-mode/runtime",
     "../node_modules/@nuxtjs/tailwindcss/runtime",
     "../node_modules/@nuxt/ui/runtime",
-    "../node_modules/@nuxt/devtools/runtime",
+    "../node_modules/@pinia/nuxt/runtime",
     "../node_modules/@nuxt/telemetry/runtime",
     ".."
   ],
@@ -188,7 +191,7 @@
     "../node_modules/@nuxtjs/color-mode/runtime/server",
     "../node_modules/@nuxtjs/tailwindcss/runtime/server",
     "../node_modules/@nuxt/ui/runtime/server",
-    "../node_modules/@nuxt/devtools/runtime/server",
+    "../node_modules/@pinia/nuxt/runtime/server",
     "../node_modules/@nuxt/telemetry/runtime/server",
     "../.output"
   ]

@@ -1,8 +1,8 @@
 import { Server as Engine } from 'engine.io';
 import { Server } from 'socket.io';
 import { defineEventHandler } from 'h3';
-import Docker from 'dockerode';
 import { PassThrough } from 'stream';
+import dockerService from '~/server/services/docker';
 
 export default defineNitroPlugin((nitroApp) => {
   const engine = new Engine();
@@ -12,7 +12,7 @@ export default defineNitroPlugin((nitroApp) => {
       methods: ["GET", "POST"]
     }
   });
-  const docker = new Docker({ socketPath: '/var/run/docker.sock' });
+  const docker = dockerService.getDocker();
 
   io.bind(engine);
 

@@ -1,5 +1,5 @@
-import Container from "@/models/Container";
-import Database from "@/models/Database";
+import Container from "~/utils/Container.js";
+import Database from "~/utils/Database.js";
 
 export default defineEventHandler(async (event) => {
     if (event.node.req.method !== 'POST') {

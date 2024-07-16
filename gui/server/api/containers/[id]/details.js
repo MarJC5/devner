@@ -1,4 +1,4 @@
-import dockerService from '@/server/services/docker';
+import dockerService from '~/server/services/docker';
 
 export default defineEventHandler(async (event) => {
     if (event.node.req.method !== 'GET') {

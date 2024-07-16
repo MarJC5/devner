@@ -4,7 +4,7 @@
 
 <script setup>
 import { isClient } from '@vueuse/core';
-import { socket } from '@/utils/socket';
+import { socket } from '~/utils/socket';
 
 const props = defineProps({
   containerId: {
@@ -61,11 +61,11 @@ onMounted(async () => {
       xterm.write(`\r\nError: ${error}\r\n`);
     });
     socket.on('connect', () => {
-      xterm.write('\r\nConnected to server\r\n');
+      xterm.write('\r\nConnected to ~/server\r\n');
       connectSocket();
     });
     socket.on('disconnect', () => {
-      xterm.write('\r\nDisconnected from server\r\n');
+      xterm.write('\r\nDisconnected from ~/server\r\n');
     });
 
     window.addEventListener('resize', fitAddon.fit);
@@ -108,3 +108,4 @@ onBeforeUnmount(() => {
   display: none;
 }
 </style>../utils/socket
+~/app/utils/socket

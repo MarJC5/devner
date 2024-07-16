@@ -36,8 +36,8 @@ declare module 'nitropack' {
     '/api/containers/stop': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/containers/stop').default>>>>
     }
-    '/api/databases/create': {
-      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/databases/create').default>>>>
+    '/api/databases/:type/create': {
+      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/databases/[type]/create').default>>>>
     }
     '/api/databases/delete': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/databases/delete').default>>>>

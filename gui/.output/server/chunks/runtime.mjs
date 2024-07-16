@@ -98,16 +98,16 @@ const ENC_BACKTICK_RE = /%60/gi;
 const ENC_PIPE_RE = /%7c/gi;
 const ENC_SPACE_RE = /%20/gi;
 const ENC_SLASH_RE = /%2f/gi;
-function encode$1(text) {
+function encode(text) {
   return encodeURI("" + text).replace(ENC_PIPE_RE, "|");
 }
 function encodeQueryValue(input) {
-  return encode$1(typeof input === "string" ? input : JSON.stringify(input)).replace(PLUS_RE, "%2B").replace(ENC_SPACE_RE, "+").replace(HASH_RE, "%23").replace(AMPERSAND_RE, "%26").replace(ENC_BACKTICK_RE, "`").replace(ENC_CARET_RE, "^").replace(SLASH_RE, "%2F");
+  return encode(typeof input === "string" ? input : JSON.stringify(input)).replace(PLUS_RE, "%2B").replace(ENC_SPACE_RE, "+").replace(HASH_RE, "%23").replace(AMPERSAND_RE, "%26").replace(ENC_BACKTICK_RE, "`").replace(ENC_CARET_RE, "^").replace(SLASH_RE, "%2F");
 }
 function encodeQueryKey(text) {
   return encodeQueryValue(text).replace(EQUAL_RE, "%3D");
 }
-function decode$1(text = "") {
+function decode(text = "") {
   try {
     return decodeURIComponent("" + text);
   } catch {
@@ -115,13 +115,13 @@ function decode$1(text = "") {
   }
 }
 function decodePath(text) {
-  return decode$1(text.replace(ENC_SLASH_RE, "%252F"));
+  return decode(text.replace(ENC_SLASH_RE, "%252F"));
 }
 function decodeQueryKey(text) {
-  return decode$1(text.replace(PLUS_RE, " "));
+  return decode(text.replace(PLUS_RE, " "));
 }
 function decodeQueryValue(text) {
-  return decode$1(text.replace(PLUS_RE, " "));
+  return decode(text.replace(PLUS_RE, " "));
 }
 
 function parseQuery(parametersString = "") {
@@ -168,8 +168,6 @@ function stringifyQuery(query) {
 const PROTOCOL_STRICT_REGEX = /^[\s\w\0+.-]{2,}:([/\\]{1,2})/;
 const PROTOCOL_REGEX = /^[\s\w\0+.-]{2,}:([/\\]{2})?/;
 const PROTOCOL_RELATIVE_REGEX = /^([/\\]\s*){2,}[^/\\]/;
-const PROTOCOL_SCRIPT_RE = /^[\s\0]*(blob|data|javascript|vbscript):$/i;
-const TRAILING_SLASH_RE = /\/$|\/\?|\/#/;
 const JOIN_LEADING_SLASH_RE = /^\.?\//;
 function hasProtocol(inputString, opts = {}) {
   if (typeof opts === "boolean") {
@@ -180,52 +178,20 @@ function hasProtocol(inputString, opts = {}) {
   }
   return PROTOCOL_REGEX.test(inputString) || (opts.acceptRelative ? PROTOCOL_RELATIVE_REGEX.test(inputString) : false);
 }
-function isScriptProtocol(protocol) {
-  return !!protocol && PROTOCOL_SCRIPT_RE.test(protocol);
-}
 function hasTrailingSlash(input = "", respectQueryAndFragment) {
-  if (!respectQueryAndFragment) {
+  {
     return input.endsWith("/");
   }
-  return TRAILING_SLASH_RE.test(input);
 }
 function withoutTrailingSlash(input = "", respectQueryAndFragment) {
-  if (!respectQueryAndFragment) {
+  {
     return (hasTrailingSlash(input) ? input.slice(0, -1) : input) || "/";
   }
-  if (!hasTrailingSlash(input, true)) {
-    return input || "/";
-  }
-  let path = input;
-  let fragment = "";
-  const fragmentIndex = input.indexOf("#");
-  if (fragmentIndex >= 0) {
-    path = input.slice(0, fragmentIndex);
-    fragment = input.slice(fragmentIndex);
-  }
-  const [s0, ...s] = path.split("?");
-  const cleanPath = s0.endsWith("/") ? s0.slice(0, -1) : s0;
-  return (cleanPath || "/") + (s.length > 0 ? `?${s.join("?")}` : "") + fragment;
 }
 function withTrailingSlash(input = "", respectQueryAndFragment) {
-  if (!respectQueryAndFragment) {
+  {
     return input.endsWith("/") ? input : input + "/";
   }
-  if (hasTrailingSlash(input, true)) {
-    return input || "/";
-  }
-  let path = input;
-  let fragment = "";
-  const fragmentIndex = input.indexOf("#");
-  if (fragmentIndex >= 0) {
-    path = input.slice(0, fragmentIndex);
-    fragment = input.slice(fragmentIndex);
-    if (!path) {
-      return fragment;
-    }
-  }
-  const [s0, ...s] = path.split("?");
-  return s0 + "/" + (s.length > 0 ? `?${s.join("?")}` : "") + fragment;
 }
 function hasLeadingSlash(input = "") {
   return input.startsWith("/");
@@ -377,150 +343,6 @@ function stringifyParsedURL(parsed) {
   const host = parsed.host || "";
   const proto = parsed.protocol || parsed[protocolRelative] ? (parsed.protocol || "") + "//" : "";
   return proto + auth + host + pathname + search + hash;
-}
-
-const fieldContentRegExp = /^[\u0009\u0020-\u007E\u0080-\u00FF]+$/;
-function parse$3(str, options) {
-  if (typeof str !== "string") {
-    throw new TypeError("argument str must be a string");
-  }
-  const obj = {};
-  const opt = options || {};
-  const dec = opt.decode || decode;
-  let index = 0;
-  while (index < str.length) {
-    const eqIdx = str.indexOf("=", index);
-    if (eqIdx === -1) {
-      break;
-    }
-    let endIdx = str.indexOf(";", index);
-    if (endIdx === -1) {
-      endIdx = str.length;
-    } else if (endIdx < eqIdx) {
-      index = str.lastIndexOf(";", eqIdx - 1) + 1;
-      continue;
-    }
-    const key = str.slice(index, eqIdx).trim();
-    if (void 0 === obj[key]) {
-      let val = str.slice(eqIdx + 1, endIdx).trim();
-      if (val.codePointAt(0) === 34) {
-        val = val.slice(1, -1);
-      }
-      obj[key] = tryDecode(val, dec);
-    }
-    index = endIdx + 1;
-  }
-  return obj;
-}
-function serialize(name, value, options) {
-  const opt = options || {};
-  const enc = opt.encode || encode;
-  if (typeof enc !== "function") {
-    throw new TypeError("option encode is invalid");
-  }
-  if (!fieldContentRegExp.test(name)) {
-    throw new TypeError("argument name is invalid");
-  }
-  const encodedValue = enc(value);
-  if (encodedValue && !fieldContentRegExp.test(encodedValue)) {
-    throw new TypeError("argument val is invalid");
-  }
-  let str = name + "=" + encodedValue;
-  if (void 0 !== opt.maxAge && opt.maxAge !== null) {
-    const maxAge = opt.maxAge - 0;
-    if (Number.isNaN(maxAge) || !Number.isFinite(maxAge)) {
-      throw new TypeError("option maxAge is invalid");
-    }
-    str += "; Max-Age=" + Math.floor(maxAge);
-  }
-  if (opt.domain) {
-    if (!fieldContentRegExp.test(opt.domain)) {
-      throw new TypeError("option domain is invalid");
-    }
-    str += "; Domain=" + opt.domain;
-  }
-  if (opt.path) {
-    if (!fieldContentRegExp.test(opt.path)) {
-      throw new TypeError("option path is invalid");
-    }
-    str += "; Path=" + opt.path;
-  }
-  if (opt.expires) {
-    if (!isDate(opt.expires) || Number.isNaN(opt.expires.valueOf())) {
-      throw new TypeError("option expires is invalid");
-    }
-    str += "; Expires=" + opt.expires.toUTCString();
-  }
-  if (opt.httpOnly) {
-    str += "; HttpOnly";
-  }
-  if (opt.secure) {
-    str += "; Secure";
-  }
-  if (opt.priority) {
-    const priority = typeof opt.priority === "string" ? opt.priority.toLowerCase() : opt.priority;
-    switch (priority) {
-      case "low": {
-        str += "; Priority=Low";
-        break;
-      }
-      case "medium": {
-        str += "; Priority=Medium";
-        break;
-      }
-      case "high": {
-        str += "; Priority=High";
-        break;
-      }
-      default: {
-        throw new TypeError("option priority is invalid");
-      }
-    }
-  }
-  if (opt.sameSite) {
-    const sameSite = typeof opt.sameSite === "string" ? opt.sameSite.toLowerCase() : opt.sameSite;
-    switch (sameSite) {
-      case true: {
-        str += "; SameSite=Strict";
-        break;
-      }
-      case "lax": {
-        str += "; SameSite=Lax";
-        break;
-      }
-      case "strict": {
-        str += "; SameSite=Strict";
-        break;
-      }
-      case "none": {
-        str += "; SameSite=None";
-        break;
-      }
-      default: {
-        throw new TypeError("option sameSite is invalid");
-      }
-    }
-  }
-  if (opt.partitioned) {
-    str += "; Partitioned";
-  }
-  return str;
-}
-function isDate(val) {
-  return Object.prototype.toString.call(val) === "[object Date]" || val instanceof Date;
-}
-function tryDecode(str, decode2) {
-  try {
-    return decode2(str);
-  } catch {
-    return str;
-  }
-}
-function decode(str) {
-  return str.includes("%") ? decodeURIComponent(str) : str;
-}
-function encode(val) {
-  return encodeURIComponent(val);
 }
 
 const defaults = Object.freeze({
@@ -1125,16 +947,6 @@ function sha256base64(message) {
 function hash(object, options = {}) {
   const hashed = typeof object === "string" ? object : objectHash(object, options);
   return sha256base64(hashed).slice(0, 10);
-}
-
-function isEqual(object1, object2, hashOptions = {}) {
-  if (object1 === object2) {
-    return true;
-  }
-  if (objectHash(object1, hashOptions) === objectHash(object2, hashOptions)) {
-    return true;
-  }
-  return false;
 }
 
 const NODE_TYPES = {
@@ -2419,32 +2231,6 @@ function sanitizeStatusCode(statusCode, defaultStatusCode = 200) {
     return defaultStatusCode;
   }
   return statusCode;
-}
-
-function parseCookies(event) {
-  return parse$3(event.node.req.headers.cookie || "");
-}
-function getCookie(event, name) {
-  return parseCookies(event)[name];
-}
-function setCookie(event, name, value, serializeOptions) {
-  serializeOptions = { path: "/", ...serializeOptions };
-  const cookieStr = serialize(name, value, serializeOptions);
-  let setCookies = event.node.res.getHeader("set-cookie");
-  if (!Array.isArray(setCookies)) {
-    setCookies = [setCookies];
-  }
-  const _optionsHash = objectHash(serializeOptions);
-  setCookies = setCookies.filter((cookieValue) => {
-    return cookieValue && _optionsHash !== objectHash(parse$3(cookieValue));
-  });
-  event.node.res.setHeader("set-cookie", [...setCookies, cookieStr]);
-}
-function deleteCookie(event, name, serializeOptions) {
-  setCookie(event, name, "", {
-    ...serializeOptions,
-    maxAge: 0
-  });
 }
 function splitCookiesString(cookiesString) {
   if (Array.isArray(cookiesString)) {
@@ -5954,7 +5740,7 @@ const http$1 = require$$2;
 const net = require$$3;
 const tls = require$$4;
 const { randomBytes, createHash: createHash$1 } = require$$1;
-const { URL: URL$1 } = require$$7;
+const { URL } = require$$7;
 
 const PerMessageDeflate$4 = permessageDeflate;
 const Receiver = receiver;
@@ -6628,11 +6414,11 @@ function initAsClient(websocket, address, protocols, options) {
 
   let parsedUrl;
 
-  if (address instanceof URL$1) {
+  if (address instanceof URL) {
     parsedUrl = address;
   } else {
     try {
-      parsedUrl = new URL$1(address);
+      parsedUrl = new URL(address);
     } catch (e) {
       throw new SyntaxError(`Invalid URL: ${address}`);
     }
@@ -6845,7 +6631,7 @@ function initAsClient(websocket, address, protocols, options) {
       let addr;
 
       try {
-        addr = new URL$1(location, address);
+        addr = new URL(location, address);
       } catch (e) {
         const err = new SyntaxError(`Invalid URL: ${location}`);
         emitErrorAndClose(websocket, err);
@@ -8449,8 +8235,7 @@ function createNodeFetch() {
 const fetch = globalThis.fetch || createNodeFetch();
 const Headers$1 = globalThis.Headers || s;
 const AbortController = globalThis.AbortController || i;
-const ofetch = createFetch$1({ fetch, Headers: Headers$1, AbortController });
-const $fetch = ofetch;
+createFetch$1({ fetch, Headers: Headers$1, AbortController });
 
 const nullBodyResponses = /* @__PURE__ */ new Set([101, 204, 205, 304]);
 function createCall(handle) {
@@ -8904,6 +8689,9 @@ const defineAppConfig = (config) => config;
 
 const appConfig0 = defineAppConfig({
   ui: {
+    icons: {
+      dynamic: true
+    },
     primary: "gray"
   }
 });
@@ -8996,7 +8784,7 @@ const appConfig = defuFn(appConfig0, appConfig1, inlineAppConfig);
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "2f0a8205-20d4-409f-bfb2-44ce25806d6a",
+    "buildId": "244f5463-8dce-4e55-b9a5-a7ac03158a70",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -10219,6 +10007,125 @@ function defineNitroPlugin(def) {
   return def;
 }
 
+const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+const dockerService = {
+  getDocker() {
+    return docker;
+  },
+  /**
+   * Get all containers related to devner
+   * 
+   * @returns {Promise<Docker.ContainerInfo[]>}
+   */
+  getContainers() {
+    const containers = docker.listContainers({ all: true });
+    return containers;
+  },
+  /**
+   * Get logs of a container by its id
+   * 
+   * @param {string} containerId
+   * @param {object} options
+   * @returns {Promise<string>}
+   */
+  getContainerLogs(containerId, options = { follow: true, stdout: true, stderr: true, since: 0 }) {
+    const container = docker.getContainer(containerId);
+    return container.logs(options);
+  },
+  /**
+   * Get a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  startContainer(containerId) {
+    const container = docker.getContainer(containerId);
+    return container.start();
+  },
+  /**
+   * Restart a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  restartContainer(containerId) {
+    const container = docker.getContainer(containerId);
+    return container.restart();
+  },
+  /**
+   * Stop a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  stopContainer(containerId) {
+    const container = docker.getContainer(containerId);
+    return container.stop();
+  },
+  /**
+   * Stop all containers
+   * 
+   * @returns {Promise<Docker.Container>}
+   * @returns {Docker.Container}
+   */
+  stopAllContainers() {
+    const containers = docker.listContainers({ all: true });
+    return containers.map((container) => {
+      const c = docker.getContainer(container.Id);
+      return c.stop();
+    });
+  },
+  /**
+   * Create a new container
+   * 
+   * @param {object} data
+   * @returns {Docker.Container}
+   */
+  createContainer(data) {
+    return docker.createContainer(data);
+  },
+  /**
+   * Remove a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  removeContainer(containerId) {
+    const container = docker.getContainer(containerId);
+    return container.remove();
+  },
+  /**
+   * Rebuild a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  rebuildContainer(containerId) {
+    const container = docker.getContainer(containerId);
+    return container.rebuild();
+  },
+  /**
+   * Get a container details by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.ContainerInfo}
+   */
+  getContainerDetail(containerId) {
+    const container = docker.getContainer(containerId);
+    return container.inspect();
+  },
+  /**
+   * Get a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  getContainer(containerId) {
+    const container = docker.getContainer(containerId);
+    return container;
+  }
+};
+
 const _BU7OWr3lyh = defineNitroPlugin((nitroApp) => {
   const engine = new Server();
   const io = new Server$1({
@@ -10228,7 +10135,7 @@ const _BU7OWr3lyh = defineNitroPlugin((nitroApp) => {
       methods: ["GET", "POST"]
     }
   });
-  const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+  const docker = dockerService.getDocker();
   io.bind(engine);
   io.on("connection", (socket) => {
     socket.on("getLogs", async (containerId) => {
@@ -10369,282 +10276,261 @@ const assets = {
   "/favicon.ico": {
     "type": "image/vnd.microsoft.icon",
     "etag": "\"a2be-7hQ6humwJu7NDjsXJrdu6p+sD/4\"",
-    "mtime": "2024-07-15T12:25:32.228Z",
+    "mtime": "2024-07-16T12:58:02.606Z",
     "size": 41662,
     "path": "../public/favicon.ico"
   },
-  "/_nuxt/4u0pgEpR.js": {
+  "/_nuxt/4zgHTVz-.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1995-FGveuGVnPH/ysBMuRh/d4TXpmy0\"",
-    "mtime": "2024-07-15T12:25:32.206Z",
-    "size": 6549,
-    "path": "../public/_nuxt/4u0pgEpR.js"
+    "etag": "\"518-8j0CThYvlTWfwCcOV+hp7W1yK8g\"",
+    "mtime": "2024-07-16T12:58:02.587Z",
+    "size": 1304,
+    "path": "../public/_nuxt/4zgHTVz-.js"
   },
-  "/_nuxt/B0a-Xkq4.js": {
+  "/_nuxt/B0uJPTES.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"4dd-0e6xNI9RM1K080ejK2vmNl2mvlU\"",
-    "mtime": "2024-07-15T12:25:32.207Z",
-    "size": 1245,
-    "path": "../public/_nuxt/B0a-Xkq4.js"
+    "etag": "\"7c5-x0SwlcpJ7M7/F5euSsSMRhtdEm4\"",
+    "mtime": "2024-07-16T12:58:02.588Z",
+    "size": 1989,
+    "path": "../public/_nuxt/B0uJPTES.js"
   },
-  "/_nuxt/B58s52ul.js": {
+  "/_nuxt/BBqQiP95.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"ba0-jIqDkC4yVlsZtpFuaVdBjhp4JVs\"",
-    "mtime": "2024-07-15T12:25:32.207Z",
-    "size": 2976,
-    "path": "../public/_nuxt/B58s52ul.js"
+    "etag": "\"b9b-MbrwuT/CZK9E0mGDuAuUlpYPN58\"",
+    "mtime": "2024-07-16T12:58:02.587Z",
+    "size": 2971,
+    "path": "../public/_nuxt/BBqQiP95.js"
   },
-  "/_nuxt/BVLD-xRq.js": {
+  "/_nuxt/BDrOQGBP.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"14b2-Z5RSWlNzUEp+e43sG5iLQ9fgiL0\"",
-    "mtime": "2024-07-15T12:25:32.208Z",
-    "size": 5298,
-    "path": "../public/_nuxt/BVLD-xRq.js"
+    "etag": "\"c07e-x91y2FO2RNRmuxYZkCu8oD3dh5M\"",
+    "mtime": "2024-07-16T12:58:02.588Z",
+    "size": 49278,
+    "path": "../public/_nuxt/BDrOQGBP.js"
   },
-  "/_nuxt/BdEPKHe0.js": {
+  "/_nuxt/BRfEuo3I.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"17e-bmojNYHar2nPagLtPx/3mkzjXm0\"",
-    "mtime": "2024-07-15T12:25:32.206Z",
-    "size": 382,
-    "path": "../public/_nuxt/BdEPKHe0.js"
+    "etag": "\"ab3-sNVRVCNOv0G+lPC/gKClMhPTXtQ\"",
+    "mtime": "2024-07-16T12:58:02.589Z",
+    "size": 2739,
+    "path": "../public/_nuxt/BRfEuo3I.js"
   },
-  "/_nuxt/Bh4URbzT.js": {
+  "/_nuxt/BTYPloCO.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"435-gVDWCb37DXKtP3GnxQ8RSFpQztI\"",
-    "mtime": "2024-07-15T12:25:32.206Z",
-    "size": 1077,
-    "path": "../public/_nuxt/Bh4URbzT.js"
-  },
-  "/_nuxt/BkSP2hK4.js": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"fee-soWN7CrVq0mWdiiMih2BueIeg2o\"",
-    "mtime": "2024-07-15T12:25:32.208Z",
-    "size": 4078,
-    "path": "../public/_nuxt/BkSP2hK4.js"
-  },
-  "/_nuxt/Bm1dd8O_.js": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"7b-w46HgEoWRtyUAgmBmY6P/DelLr8\"",
-    "mtime": "2024-07-15T12:25:32.208Z",
+    "etag": "\"7b-etu1LS2IKbvzASeeJs2Mb6PQ5Ls\"",
+    "mtime": "2024-07-16T12:58:02.589Z",
     "size": 123,
-    "path": "../public/_nuxt/Bm1dd8O_.js"
+    "path": "../public/_nuxt/BTYPloCO.js"
+  },
+  "/_nuxt/BUuVkETO.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"408-sczkBNV2kQsQXIbfYeVRqwcDA78\"",
+    "mtime": "2024-07-16T12:58:02.589Z",
+    "size": 1032,
+    "path": "../public/_nuxt/BUuVkETO.js"
+  },
+  "/_nuxt/Bg4kDvc2.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1943-RpsO7o9Of1YMHgZOOOUVbuKexvg\"",
+    "mtime": "2024-07-16T12:58:02.589Z",
+    "size": 6467,
+    "path": "../public/_nuxt/Bg4kDvc2.js"
   },
   "/_nuxt/ByJhTvlH.js": {
     "type": "text/javascript; charset=utf-8",
     "etag": "\"45090-gdVy/ljz3pBMWxPANIQ+RAdR/Is\"",
-    "mtime": "2024-07-15T12:25:32.213Z",
+    "mtime": "2024-07-16T12:58:02.591Z",
     "size": 282768,
     "path": "../public/_nuxt/ByJhTvlH.js"
   },
-  "/_nuxt/CAZilBRX.js": {
+  "/_nuxt/COydmdUU.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"8b1-p1V2rjpe0l3eK/Um6a0gso2QpbM\"",
-    "mtime": "2024-07-15T12:25:32.209Z",
-    "size": 2225,
-    "path": "../public/_nuxt/CAZilBRX.js"
+    "etag": "\"153-wkc/SJMYeeveZLHwJHeBnzjECVo\"",
+    "mtime": "2024-07-16T12:58:02.590Z",
+    "size": 339,
+    "path": "../public/_nuxt/COydmdUU.js"
   },
-  "/_nuxt/CFu4p6eu.js": {
+  "/_nuxt/CQMx3IcQ.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1422-hcCrcuaiuo/YWgAB4BDd5frcADE\"",
-    "mtime": "2024-07-15T12:25:32.210Z",
-    "size": 5154,
-    "path": "../public/_nuxt/CFu4p6eu.js"
+    "etag": "\"42916-SApMFU6Xfh30F0qhotbArPWUDts\"",
+    "mtime": "2024-07-16T12:58:02.591Z",
+    "size": 272662,
+    "path": "../public/_nuxt/CQMx3IcQ.js"
   },
-  "/_nuxt/CHFdaHOn.js": {
+  "/_nuxt/CbXwW9CS.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"ac1-vCxb/7eaidAE7fSGA3gjbF4Oy9k\"",
-    "mtime": "2024-07-15T12:25:32.210Z",
-    "size": 2753,
-    "path": "../public/_nuxt/CHFdaHOn.js"
+    "etag": "\"7d0-BQsLlo53JQyMm4y8VeuL22bGQpc\"",
+    "mtime": "2024-07-16T12:58:02.590Z",
+    "size": 2000,
+    "path": "../public/_nuxt/CbXwW9CS.js"
   },
-  "/_nuxt/CP-BOYe9.js": {
+  "/_nuxt/ClcxvH6y.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"46b6-ROpiSft80s672Cf16JzSHhzJmP4\"",
-    "mtime": "2024-07-15T12:25:32.210Z",
-    "size": 18102,
-    "path": "../public/_nuxt/CP-BOYe9.js"
+    "etag": "\"1ede8-bC308cHD6/QMRyzuu8jHoJql0pg\"",
+    "mtime": "2024-07-16T12:58:02.592Z",
+    "size": 126440,
+    "path": "../public/_nuxt/ClcxvH6y.js"
   },
-  "/_nuxt/CRqkEeNj.js": {
+  "/_nuxt/Cr4AQW7R.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"6ad-/EQV6xF1UIsvPIhKdYOAiX3rn2M\"",
-    "mtime": "2024-07-15T12:25:32.211Z",
-    "size": 1709,
-    "path": "../public/_nuxt/CRqkEeNj.js"
+    "etag": "\"14b2-Cx0gyrYuwf/KZZGbiXK4wTq9Y3w\"",
+    "mtime": "2024-07-16T12:58:02.592Z",
+    "size": 5298,
+    "path": "../public/_nuxt/Cr4AQW7R.js"
   },
-  "/_nuxt/CY0x7kxx.js": {
+  "/_nuxt/CrilBagr.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"571c-bU29bPf9CWsR0A7r8kV55pt3uIU\"",
-    "mtime": "2024-07-15T12:25:32.212Z",
-    "size": 22300,
-    "path": "../public/_nuxt/CY0x7kxx.js"
-  },
-  "/_nuxt/Czb7TOuw.js": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"898-cNc0w4RiuOABwwIrsmOArYCWn1o\"",
-    "mtime": "2024-07-15T12:25:32.213Z",
-    "size": 2200,
-    "path": "../public/_nuxt/Czb7TOuw.js"
+    "etag": "\"c0a-S++qj6CMvNyM6LLPKGz3FbX1F+I\"",
+    "mtime": "2024-07-16T12:58:02.592Z",
+    "size": 3082,
+    "path": "../public/_nuxt/CrilBagr.js"
   },
   "/_nuxt/D-0KS9LU.js": {
     "type": "text/javascript; charset=utf-8",
     "etag": "\"6b2-3gKC/rOoI4OVsjNPo7WPOD2JUfE\"",
-    "mtime": "2024-07-15T12:25:32.213Z",
+    "mtime": "2024-07-16T12:58:02.592Z",
     "size": 1714,
     "path": "../public/_nuxt/D-0KS9LU.js"
   },
-  "/_nuxt/D9CLLpjw.js": {
+  "/_nuxt/D0cTeezO.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"3131b-3HmKqYDiRUxhjPyTF1wFg4aqMwM\"",
-    "mtime": "2024-07-15T12:25:32.216Z",
-    "size": 201499,
-    "path": "../public/_nuxt/D9CLLpjw.js"
+    "etag": "\"561-VrPq7omiFOyxOxBtx/KZf6a2CjE\"",
+    "mtime": "2024-07-16T12:58:02.593Z",
+    "size": 1377,
+    "path": "../public/_nuxt/D0cTeezO.js"
   },
-  "/_nuxt/DTL95yix.js": {
+  "/_nuxt/D6tA95oo.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"4a93-JA7X3IB+9n/zxe0gQdWkzzEdRDc\"",
-    "mtime": "2024-07-15T12:25:32.214Z",
-    "size": 19091,
-    "path": "../public/_nuxt/DTL95yix.js"
+    "etag": "\"1ca9-HuNWs6kF1Z39HoK1/Z0/JXyb83o\"",
+    "mtime": "2024-07-16T12:58:02.593Z",
+    "size": 7337,
+    "path": "../public/_nuxt/D6tA95oo.js"
   },
-  "/_nuxt/DTkFrRBQ.js": {
+  "/_nuxt/DMAu9VFB.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"17d-kIzJwlhxdwxVx3DUvWoomO7mOEc\"",
-    "mtime": "2024-07-15T12:25:32.214Z",
-    "size": 381,
-    "path": "../public/_nuxt/DTkFrRBQ.js"
+    "etag": "\"b48-TC2Z7+gheCCQqem03v8g+XQBMH4\"",
+    "mtime": "2024-07-16T12:58:02.593Z",
+    "size": 2888,
+    "path": "../public/_nuxt/DMAu9VFB.js"
   },
-  "/_nuxt/DYDf7gEo.js": {
+  "/_nuxt/DVeOjfX3.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"4d6-TUSTZJm4hiC7bHeIV1hJyxdf4kY\"",
-    "mtime": "2024-07-15T12:25:32.215Z",
-    "size": 1238,
-    "path": "../public/_nuxt/DYDf7gEo.js"
+    "etag": "\"8d0-Sv/Aj7e+ZbYvYGRJw+Hmnd5yF3A\"",
+    "mtime": "2024-07-16T12:58:02.593Z",
+    "size": 2256,
+    "path": "../public/_nuxt/DVeOjfX3.js"
   },
-  "/_nuxt/DZCjAxDg.js": {
+  "/_nuxt/DYK02DQQ.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1ecc1-u7xHKXS4R31UYWb2YBOpyoBMPOA\"",
-    "mtime": "2024-07-15T12:25:32.216Z",
-    "size": 126145,
-    "path": "../public/_nuxt/DZCjAxDg.js"
+    "etag": "\"1cd7-GvVAAv+IRFxsdnJCA9Nd1QS59lI\"",
+    "mtime": "2024-07-16T12:58:02.594Z",
+    "size": 7383,
+    "path": "../public/_nuxt/DYK02DQQ.js"
   },
-  "/_nuxt/DlAUqK2U.js": {
+  "/_nuxt/Df6D6nxG.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"5b-eFCz/UrraTh721pgAl0VxBNR1es\"",
-    "mtime": "2024-07-15T12:25:32.217Z",
-    "size": 91,
-    "path": "../public/_nuxt/DlAUqK2U.js"
+    "etag": "\"5f6-SkZ9c5HjBtaYhENJ5u4ksG1ZiPc\"",
+    "mtime": "2024-07-16T12:58:02.594Z",
+    "size": 1526,
+    "path": "../public/_nuxt/Df6D6nxG.js"
   },
-  "/_nuxt/DvdKWs5p.js": {
+  "/_nuxt/DmC2N_7Z.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"78e-wmw7JDLXdYvBK1yxWP68MUh1o4w\"",
-    "mtime": "2024-07-15T12:25:32.216Z",
-    "size": 1934,
-    "path": "../public/_nuxt/DvdKWs5p.js"
-  },
-  "/_nuxt/EiKtbDvA.js": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"ace-vhnBHVf9GynaLoEEJcYdXthHwHY\"",
-    "mtime": "2024-07-15T12:25:32.217Z",
-    "size": 2766,
-    "path": "../public/_nuxt/EiKtbDvA.js"
-  },
-  "/_nuxt/Icon.8lQfE3Ql.css": {
-    "type": "text/css; charset=utf-8",
-    "etag": "\"43-94megyLdO4/viLdnL2Kxt/gfOjM\"",
-    "mtime": "2024-07-15T12:25:32.217Z",
-    "size": 67,
-    "path": "../public/_nuxt/Icon.8lQfE3Ql.css"
+    "etag": "\"87f-W0jZyqfj14SJQdxBV/nRHm/O8+M\"",
+    "mtime": "2024-07-16T12:58:02.594Z",
+    "size": 2175,
+    "path": "../public/_nuxt/DmC2N_7Z.js"
   },
   "/_nuxt/IconCSS.Z2BAHt_z.css": {
     "type": "text/css; charset=utf-8",
     "etag": "\"102-h9Iv/oJ6/LJjNheNG92kJMblk/8\"",
-    "mtime": "2024-07-15T12:25:32.218Z",
+    "mtime": "2024-07-16T12:58:02.595Z",
     "size": 258,
     "path": "../public/_nuxt/IconCSS.Z2BAHt_z.css"
   },
-  "/_nuxt/MNiwmai0.js": {
+  "/_nuxt/QLIpuvEF.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1cda-6vxdA98hPK5ieWi9aIXBNqkTJxI\"",
-    "mtime": "2024-07-15T12:25:32.218Z",
-    "size": 7386,
-    "path": "../public/_nuxt/MNiwmai0.js"
+    "etag": "\"153-wkc/SJMYeeveZLHwJHeBnzjECVo\"",
+    "mtime": "2024-07-16T12:58:02.595Z",
+    "size": 339,
+    "path": "../public/_nuxt/QLIpuvEF.js"
   },
   "/_nuxt/Single.AGmNxbLG.css": {
     "type": "text/css; charset=utf-8",
     "etag": "\"160-7ARBO8wJS33ge1ZJLBIbKJbMrco\"",
-    "mtime": "2024-07-15T12:25:32.219Z",
+    "mtime": "2024-07-16T12:58:02.595Z",
     "size": 352,
     "path": "../public/_nuxt/Single.AGmNxbLG.css"
   },
-  "/_nuxt/ZqwuKQxK.js": {
+  "/_nuxt/UcEVdAoe.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1b0-TTfAzXvc2HhhhDxqw8JJKGmtH3o\"",
-    "mtime": "2024-07-15T12:25:32.219Z",
-    "size": 432,
-    "path": "../public/_nuxt/ZqwuKQxK.js"
+    "etag": "\"75f-2zgZPqGIcm9GTWcyLMD0tsoIoNU\"",
+    "mtime": "2024-07-16T12:58:02.596Z",
+    "size": 1887,
+    "path": "../public/_nuxt/UcEVdAoe.js"
   },
-  "/_nuxt/_IfFK090.js": {
+  "/_nuxt/YbCoyvMO.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1b0-TTfAzXvc2HhhhDxqw8JJKGmtH3o\"",
-    "mtime": "2024-07-15T12:25:32.219Z",
-    "size": 432,
-    "path": "../public/_nuxt/_IfFK090.js"
+    "etag": "\"615-LpDZ/XaJoTk+M045vQOazXyQFCY\"",
+    "mtime": "2024-07-16T12:58:02.596Z",
+    "size": 1557,
+    "path": "../public/_nuxt/YbCoyvMO.js"
   },
-  "/_nuxt/_qGLMAQR.js": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"c068-32tjrOYUzrBw0NSk6P4YBG/Y7i0\"",
-    "mtime": "2024-07-15T12:25:32.220Z",
-    "size": 49256,
-    "path": "../public/_nuxt/_qGLMAQR.js"
+  "/_nuxt/entry.BvlSag6x.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"d7f20-g4grnroURrQEYq4ovKY+Q/S27Gw\"",
+    "mtime": "2024-07-16T12:58:02.600Z",
+    "size": 884512,
+    "path": "../public/_nuxt/entry.BvlSag6x.css"
   },
   "/_nuxt/error-404.CjGVuf6H.css": {
     "type": "text/css; charset=utf-8",
     "etag": "\"de4-SLOwa5sHvQIi2t5fYZEgfDusMUc\"",
-    "mtime": "2024-07-15T12:25:32.220Z",
+    "mtime": "2024-07-16T12:58:02.597Z",
     "size": 3556,
     "path": "../public/_nuxt/error-404.CjGVuf6H.css"
   },
   "/_nuxt/error-500.DFBAsgKS.css": {
     "type": "text/css; charset=utf-8",
     "etag": "\"75c-I8wgoT19gdl/gPtizNKXfkn+TtQ\"",
-    "mtime": "2024-07-15T12:25:32.221Z",
+    "mtime": "2024-07-16T12:58:02.597Z",
     "size": 1884,
     "path": "../public/_nuxt/error-500.DFBAsgKS.css"
   },
-  "/_nuxt/h8HrDKoz.js": {
+  "/_nuxt/rbhE-3Vg.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"c3b-MmwsTgbbOlv1BjcuAaPPmvS+bNs\"",
-    "mtime": "2024-07-15T12:25:32.221Z",
-    "size": 3131,
-    "path": "../public/_nuxt/h8HrDKoz.js"
+    "etag": "\"19ba-+X5kO3abWlWQmwZG/+YF1fo04cc\"",
+    "mtime": "2024-07-16T12:58:02.597Z",
+    "size": 6586,
+    "path": "../public/_nuxt/rbhE-3Vg.js"
   },
-  "/_nuxt/jAJ9FMD3.js": {
+  "/_nuxt/wAqY4c1Z.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"900-5fFCnJmNMsvM0Q9vPAzF+VkJ3C4\"",
-    "mtime": "2024-07-15T12:25:32.221Z",
-    "size": 2304,
-    "path": "../public/_nuxt/jAJ9FMD3.js"
+    "etag": "\"4fa-2t4Ku3bqCt96p6xcJ545hQjdp5M\"",
+    "mtime": "2024-07-16T12:58:02.598Z",
+    "size": 1274,
+    "path": "../public/_nuxt/wAqY4c1Z.js"
   },
   "/_nuxt/xterm.BdtCR0Hx.css": {
     "type": "text/css; charset=utf-8",
     "etag": "\"ad6-4ntX4iB5os2PFboTXwU1a4Uv47c\"",
-    "mtime": "2024-07-15T12:25:32.222Z",
+    "mtime": "2024-07-16T12:58:02.598Z",
     "size": 2774,
     "path": "../public/_nuxt/xterm.BdtCR0Hx.css"
   },
   "/_nuxt/builds/latest.json": {
     "type": "application/json",
-    "etag": "\"47-4KSBXyc9+92It7j5tagh38vSkzY\"",
-    "mtime": "2024-07-15T12:25:32.182Z",
+    "etag": "\"47-Iu7J38TGwHe6diOCFx6Be72N5To\"",
+    "mtime": "2024-07-16T12:58:02.575Z",
     "size": 71,
     "path": "../public/_nuxt/builds/latest.json"
   },
-  "/_nuxt/builds/meta/2f0a8205-20d4-409f-bfb2-44ce25806d6a.json": {
+  "/_nuxt/builds/meta/244f5463-8dce-4e55-b9a5-a7ac03158a70.json": {
     "type": "application/json",
-    "etag": "\"8b-IZAgm6NmFZZy+CujjlI8cgOEA5o\"",
-    "mtime": "2024-07-15T12:25:32.173Z",
+    "etag": "\"8b-jPttt1pI5/OU7ls99455ZGLnuw8\"",
+    "mtime": "2024-07-16T12:58:02.570Z",
     "size": 139,
-    "path": "../public/_nuxt/builds/meta/2f0a8205-20d4-409f-bfb2-44ce25806d6a.json"
+    "path": "../public/_nuxt/builds/meta/244f5463-8dce-4e55-b9a5-a7ac03158a70.json"
   }
 };
 
@@ -10852,11 +10738,11 @@ const _lazy_k393Ja = () => import('./routes/api/containers/_id/start.mjs');
 const _lazy_wlduN0 = () => import('./routes/api/containers/_id/stop.mjs');
 const _lazy_pmlwFT = () => import('./routes/api/containers/create.mjs');
 const _lazy_anV5ro = () => import('./routes/api/containers/stop.mjs');
-const _lazy_F1mHSz = () => import('./routes/api/databases/create.mjs');
+const _lazy_J9DFqo = () => import('./routes/api/databases/_type/create.mjs');
 const _lazy_aw1UMx = () => import('./routes/api/databases/delete.mjs');
 const _lazy_rscWg8 = () => import('./routes/api/projects/_name/delete.mjs');
 const _lazy_JLcWz3 = () => import('./routes/api/projects/create.mjs');
-const _lazy_1AROdB = () => import('./routes/renderer.mjs').then(function (n) { return n.r; });
+const _lazy_1AROdB = () => import('./routes/renderer.mjs');
 
 const handlers = [
   { route: '', handler: _f4b49z, lazy: false, middleware: true, method: undefined },
@@ -10871,7 +10757,7 @@ const handlers = [
   { route: '/api/containers/:id/stop', handler: _lazy_wlduN0, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers/create', handler: _lazy_pmlwFT, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers/stop', handler: _lazy_anV5ro, lazy: true, middleware: false, method: undefined },
-  { route: '/api/databases/create', handler: _lazy_F1mHSz, lazy: true, middleware: false, method: undefined },
+  { route: '/api/databases/:type/create', handler: _lazy_J9DFqo, lazy: true, middleware: false, method: undefined },
   { route: '/api/databases/delete', handler: _lazy_aw1UMx, lazy: true, middleware: false, method: undefined },
   { route: '/api/projects/:name/delete', handler: _lazy_rscWg8, lazy: true, middleware: false, method: undefined },
   { route: '/api/projects/create', handler: _lazy_JLcWz3, lazy: true, middleware: false, method: undefined },
@@ -11254,5 +11140,5 @@ setupGracefulShutdown(listener, nitroApp);
 }
 const nodeServer = {};
 
-export { $fetch as $, createRouter$1 as A, isEqual as B, parseQuery as C, withTrailingSlash as D, withoutTrailingSlash as E, parse$3 as F, getRequestHeader as G, destr as H, setCookie as I, getCookie as J, deleteCookie as K, nodeServer as L, send as a, setResponseStatus as b, setResponseHeaders as c, defineEventHandler as d, eventHandler as e, useNitroApp as f, getResponseStatus as g, getQuery as h, createError$1 as i, joinRelativeURL as j, getRouteRules as k, getResponseStatusText as l, hasProtocol as m, isScriptProtocol as n, joinURL as o, defuFn as p, klona as q, readBody as r, setResponseHeader as s, defu as t, useRuntimeConfig as u, sanitizeStatusCode as v, withQuery as w, createDefu as x, createHooks as y, toRouteMatcher as z };
+export { dockerService as a, send as b, setResponseStatus as c, defineEventHandler as d, eventHandler as e, setResponseHeaders as f, getResponseStatus as g, useNitroApp as h, getQuery as i, joinRelativeURL as j, createError$1 as k, getRouteRules as l, getResponseStatusText as m, nodeServer as n, readBody as r, setResponseHeader as s, useRuntimeConfig as u };
 //# sourceMappingURL=runtime.mjs.map

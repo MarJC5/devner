@@ -1,2 +1,0 @@
-import style_0 from './LogViewer-styles-1.mjs-CWEbbkxv.js';
-export default [style_0]

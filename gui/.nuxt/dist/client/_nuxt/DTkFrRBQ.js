@@ -1,1 +1,0 @@
-import{_ as t}from"./Czb7TOuw.js";import{_ as r}from"./DlAUqK2U.js";import{f as e,o as c}from"./D9CLLpjw.js";import"./DTL95yix.js";import"./CY0x7kxx.js";import"./CAZilBRX.js";import"./CFu4p6eu.js";const s={};function a(i,m){const o=t;return c(),e(o,{title:"Projects",class:"sticky top-0 bg-white z-10 dark:bg-gray-800 mb-4 pb-4"})}const g=r(s,[["render",a]]);export{g as default};

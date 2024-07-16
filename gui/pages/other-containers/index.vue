@@ -120,8 +120,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import Container from "@/models/Container";
+import Container from "~/utils/Container.js";
 
 const containers = ref([]);
 const loading = ref(true);

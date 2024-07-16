@@ -7,14 +7,13 @@ import { defineEventHandler, handleCacheHeaders, splitCookiesString, isEvent, cr
 import wsAdapter from 'file:///app/node_modules/crossws/dist/adapters/node.mjs';
 import Docker from 'file:///app/node_modules/dockerode/lib/docker.js';
 import { PassThrough } from 'stream';
-import Container from 'file:///app/models/Container.js';
-import Database from 'file:///app/models/Database.js';
-import Project from 'file:///app/models/Project.js';
+import Container from 'file:///app/utils/Container.js';
+import Database from 'file:///app/utils/Database.js';
+import Project from 'file:///app/utils/Project.js';
 import { getRequestDependencies, getPreloadLinks, getPrefetchLinks, createRenderer } from 'file:///app/node_modules/vue-bundle-renderer/dist/runtime.mjs';
 import { stringify, uneval } from 'file:///app/node_modules/devalue/index.js';
 import destr from 'file:///app/node_modules/destr/dist/index.mjs';
 import { parseURL, withoutBase, joinURL, getQuery, withQuery, withTrailingSlash, joinRelativeURL } from 'file:///app/node_modules/ufo/dist/index.mjs';
-import { renderToString } from 'file:///app/node_modules/vue/server-renderer/index.mjs';
 import { hash } from 'file:///app/node_modules/ohash/dist/index.mjs';
 import { propsToString, renderSSRHead } from 'file:///app/node_modules/@unhead/ssr/dist/index.mjs';
 import { createFetch as createFetch$1, Headers as Headers$1 } from 'file:///app/node_modules/ofetch/dist/node.mjs';
@@ -79,6 +78,9 @@ const defineAppConfig = (config) => config;
 
 const appConfig0 = defineAppConfig({
   ui: {
+    icons: {
+      dynamic: true
+    },
     primary: "gray"
   }
 });
@@ -694,23 +696,6 @@ function getRouteRulesForPath(path) {
   return defu({}, ..._routeRulesMatcher.matchAll(path).reverse());
 }
 
-const script$1 = `
-if (!window.__NUXT_DEVTOOLS_TIME_METRIC__) {
-  Object.defineProperty(window, '__NUXT_DEVTOOLS_TIME_METRIC__', {
-    value: {},
-    enumerable: false,
-    configurable: true,
-  })
-}
-window.__NUXT_DEVTOOLS_TIME_METRIC__.appInit = Date.now()
-`;
-
-const _IgKwmrtsSl = (function(nitro) {
-  nitro.hooks.hook("render:html", (htmlContext) => {
-    htmlContext.head.push(`<script>${script$1}<\/script>`);
-  });
-});
-
 const rootDir = "/app";
 
 const devReducers = {
@@ -864,6 +849,125 @@ function defineRenderHandler(handler) {
   });
 }
 
+const docker$1 = new Docker({ socketPath: "/var/run/docker.sock" });
+const dockerService = {
+  getDocker() {
+    return docker$1;
+  },
+  /**
+   * Get all containers related to devner
+   * 
+   * @returns {Promise<Docker.ContainerInfo[]>}
+   */
+  getContainers() {
+    const containers = docker$1.listContainers({ all: true });
+    return containers;
+  },
+  /**
+   * Get logs of a container by its id
+   * 
+   * @param {string} containerId
+   * @param {object} options
+   * @returns {Promise<string>}
+   */
+  getContainerLogs(containerId, options = { follow: true, stdout: true, stderr: true, since: 0 }) {
+    const container = docker$1.getContainer(containerId);
+    return container.logs(options);
+  },
+  /**
+   * Get a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  startContainer(containerId) {
+    const container = docker$1.getContainer(containerId);
+    return container.start();
+  },
+  /**
+   * Restart a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  restartContainer(containerId) {
+    const container = docker$1.getContainer(containerId);
+    return container.restart();
+  },
+  /**
+   * Stop a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  stopContainer(containerId) {
+    const container = docker$1.getContainer(containerId);
+    return container.stop();
+  },
+  /**
+   * Stop all containers
+   * 
+   * @returns {Promise<Docker.Container>}
+   * @returns {Docker.Container}
+   */
+  stopAllContainers() {
+    const containers = docker$1.listContainers({ all: true });
+    return containers.map((container) => {
+      const c = docker$1.getContainer(container.Id);
+      return c.stop();
+    });
+  },
+  /**
+   * Create a new container
+   * 
+   * @param {object} data
+   * @returns {Docker.Container}
+   */
+  createContainer(data) {
+    return docker$1.createContainer(data);
+  },
+  /**
+   * Remove a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  removeContainer(containerId) {
+    const container = docker$1.getContainer(containerId);
+    return container.remove();
+  },
+  /**
+   * Rebuild a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  rebuildContainer(containerId) {
+    const container = docker$1.getContainer(containerId);
+    return container.rebuild();
+  },
+  /**
+   * Get a container details by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.ContainerInfo}
+   */
+  getContainerDetail(containerId) {
+    const container = docker$1.getContainer(containerId);
+    return container.inspect();
+  },
+  /**
+   * Get a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Docker.Container}
+   */
+  getContainer(containerId) {
+    const container = docker$1.getContainer(containerId);
+    return container;
+  }
+};
+
 const _BU7OWr3lyh = defineNitroPlugin((nitroApp) => {
   const engine = new Server();
   const io = new Server$1({
@@ -873,7 +977,7 @@ const _BU7OWr3lyh = defineNitroPlugin((nitroApp) => {
       methods: ["GET", "POST"]
     }
   });
-  const docker = new Docker({ socketPath: "/var/run/docker.sock" });
+  const docker = dockerService.getDocker();
   io.bind(engine);
   io.on("connection", (socket) => {
     socket.on("getLogs", async (containerId) => {
@@ -949,8 +1053,7 @@ const _BU7OWr3lyh = defineNitroPlugin((nitroApp) => {
 });
 
 const plugins = [
-  _IgKwmrtsSl,
-_7vtsfXKH9w,
+  _7vtsfXKH9w,
 _6Avp3lmbMu,
 _BU7OWr3lyh
 ];
@@ -1026,7 +1129,7 @@ const _lazy_k393Ja = () => Promise.resolve().then(function () { return start$1; 
 const _lazy_wlduN0 = () => Promise.resolve().then(function () { return stop$3; });
 const _lazy_pmlwFT = () => Promise.resolve().then(function () { return create$5; });
 const _lazy_anV5ro = () => Promise.resolve().then(function () { return stop$1; });
-const _lazy_F1mHSz = () => Promise.resolve().then(function () { return create$3; });
+const _lazy_J9DFqo = () => Promise.resolve().then(function () { return create$3; });
 const _lazy_aw1UMx = () => Promise.resolve().then(function () { return _delete$3; });
 const _lazy_rscWg8 = () => Promise.resolve().then(function () { return _delete$1; });
 const _lazy_JLcWz3 = () => Promise.resolve().then(function () { return create$1; });
@@ -1044,7 +1147,7 @@ const handlers = [
   { route: '/api/containers/:id/stop', handler: _lazy_wlduN0, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers/create', handler: _lazy_pmlwFT, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers/stop', handler: _lazy_anV5ro, lazy: true, middleware: false, method: undefined },
-  { route: '/api/databases/create', handler: _lazy_F1mHSz, lazy: true, middleware: false, method: undefined },
+  { route: '/api/databases/:type/create', handler: _lazy_J9DFqo, lazy: true, middleware: false, method: undefined },
   { route: '/api/databases/delete', handler: _lazy_aw1UMx, lazy: true, middleware: false, method: undefined },
   { route: '/api/projects/:name/delete', handler: _lazy_rscWg8, lazy: true, middleware: false, method: undefined },
   { route: '/api/projects/create', handler: _lazy_JLcWz3, lazy: true, middleware: false, method: undefined },
@@ -1248,122 +1351,6 @@ const errorDev = /*#__PURE__*/Object.freeze({
   template: template$1
 });
 
-const docker$1 = new Docker({ socketPath: "/var/run/docker.sock" });
-const dockerService = {
-  /**
-   * Get all containers related to devner
-   * 
-   * @returns {Promise<Docker.ContainerInfo[]>}
-   */
-  getContainers() {
-    const containers = docker$1.listContainers({ all: true });
-    return containers;
-  },
-  /**
-   * Get logs of a container by its id
-   * 
-   * @param {string} containerId
-   * @param {object} options
-   * @returns {Promise<string>}
-   */
-  getContainerLogs(containerId, options = { follow: true, stdout: true, stderr: true, since: 0 }) {
-    const container = docker$1.getContainer(containerId);
-    return container.logs(options);
-  },
-  /**
-   * Get a container by its id
-   * 
-   * @param {string} containerId
-   * @returns {Docker.Container}
-   */
-  startContainer(containerId) {
-    const container = docker$1.getContainer(containerId);
-    return container.start();
-  },
-  /**
-   * Restart a container by its id
-   * 
-   * @param {string} containerId
-   * @returns {Docker.Container}
-   */
-  restartContainer(containerId) {
-    const container = docker$1.getContainer(containerId);
-    return container.restart();
-  },
-  /**
-   * Stop a container by its id
-   * 
-   * @param {string} containerId
-   * @returns {Docker.Container}
-   */
-  stopContainer(containerId) {
-    const container = docker$1.getContainer(containerId);
-    return container.stop();
-  },
-  /**
-   * Stop all containers
-   * 
-   * @returns {Promise<Docker.Container>}
-   * @returns {Docker.Container}
-   */
-  stopAllContainers() {
-    const containers = docker$1.listContainers({ all: true });
-    return containers.map((container) => {
-      const c = docker$1.getContainer(container.Id);
-      return c.stop();
-    });
-  },
-  /**
-   * Create a new container
-   * 
-   * @param {object} data
-   * @returns {Docker.Container}
-   */
-  createContainer(data) {
-    return docker$1.createContainer(data);
-  },
-  /**
-   * Remove a container by its id
-   * 
-   * @param {string} containerId
-   * @returns {Docker.Container}
-   */
-  removeContainer(containerId) {
-    const container = docker$1.getContainer(containerId);
-    return container.remove();
-  },
-  /**
-   * Rebuild a container by its id
-   * 
-   * @param {string} containerId
-   * @returns {Docker.Container}
-   */
-  rebuildContainer(containerId) {
-    const container = docker$1.getContainer(containerId);
-    return container.rebuild();
-  },
-  /**
-   * Get a container details by its id
-   * 
-   * @param {string} containerId
-   * @returns {Docker.ContainerInfo}
-   */
-  getContainerDetail(containerId) {
-    const container = docker$1.getContainer(containerId);
-    return container.inspect();
-  },
-  /**
-   * Get a container by its id
-   * 
-   * @param {string} containerId
-   * @returns {Docker.Container}
-   */
-  getContainer(containerId) {
-    const container = docker$1.getContainer(containerId);
-    return container;
-  }
-};
-
 const containers = defineEventHandler(async (event) => {
   if (event.node.req.method === "GET") {
     const containers = await dockerService.getContainers();
@@ -1563,9 +1550,16 @@ const create$2 = defineEventHandler(async (event) => {
     return { status: "error" };
   }
   const body = await readBody(event);
-  const { type, username, password, database } = body;
+  const { type } = event.context.params;
+  const { username, password, database } = body;
   const container = await Container.fetchContainerByName(`${type}_devner`);
-  await container.cmd(`mysql -u ${username} -p'${password}' -e "CREATE DATABASE IF NOT EXISTS ${database}"`);
+  if (type === "mysql") {
+    await container.cmd(`mysql -u ${username} -p'${password}' -e "CREATE DATABASE IF NOT EXISTS ${database}"`);
+  } else if (type === "postgresql") {
+    await container.cmd(`psql -U ${username} -c "CREATE DATABASE ${database}"`);
+  } else {
+    return { status: "error", message: "Invalid database type" };
+  }
   const db = await Database.fetchDatabase(database);
   if (!db) {
     return { status: "error", message: "Failed to create database" };
@@ -1727,32 +1721,7 @@ function publicAssetsURL(...path) {
 globalThis.__buildAssetsURL = buildAssetsURL;
 globalThis.__publicAssetsURL = publicAssetsURL;
 const getClientManifest = () => import('file:///app/.nuxt/dist/server/client.manifest.mjs').then((r) => r.default || r).then((r) => typeof r === "function" ? r() : r);
-const getServerEntry = () => import('file:///app/.nuxt/dist/server/server.mjs').then((r) => r.default || r);
 const getSSRStyles = lazyCachedFunction(() => Promise.resolve().then(function () { return styles$1; }).then((r) => r.default || r));
-const getSSRRenderer = lazyCachedFunction(async () => {
-  const manifest = await getClientManifest();
-  if (!manifest) {
-    throw new Error("client.manifest is not available");
-  }
-  const createSSRApp = await getServerEntry();
-  if (!createSSRApp) {
-    throw new Error("Server bundle is not available");
-  }
-  const options = {
-    manifest,
-    renderToString: renderToString$1,
-    buildAssetsURL
-  };
-  const renderer = createRenderer(createSSRApp, options);
-  async function renderToString$1(input, context) {
-    const html = await renderToString(input, context);
-    if (process.env.NUXT_VITE_NODE_OPTIONS) {
-      renderer.rendererContext.updateManifest(await getClientManifest());
-    }
-    return APP_ROOT_OPEN_TAG + html + APP_ROOT_CLOSE_TAG;
-  }
-  return renderer;
-});
 const getSPARenderer = lazyCachedFunction(async () => {
   const manifest = await getClientManifest();
   const spaTemplate = await Promise.resolve().then(function () { return _virtual__spaTemplate; }).then((r) => r.template).catch(() => "").then((r) => APP_ROOT_OPEN_TAG + r + APP_ROOT_CLOSE_TAG);
@@ -1839,7 +1808,7 @@ const renderer = defineRenderHandler(async (event) => {
     url,
     event,
     runtimeConfig: useRuntimeConfig(event),
-    noSSR: event.context.nuxt?.noSSR || routeOptions.ssr === false && !isRenderingIsland || (false),
+    noSSR: !!true   ,
     head,
     error: !!ssrError,
     nuxt: void 0,
@@ -1855,7 +1824,7 @@ const renderer = defineRenderHandler(async (event) => {
     },
     islandContext
   };
-  const renderer = ssrContext.noSSR ? await getSPARenderer() : await getSSRRenderer();
+  const renderer = await getSPARenderer() ;
   const _rendered = await renderer.renderToString(ssrContext).catch(async (error) => {
     if (ssrContext._renderResponse && error.message === "skipping render") {
       return {};
@@ -2033,7 +2002,7 @@ function renderPayloadJsonScript(opts) {
     "type": "application/json",
     "id": opts.id,
     "innerHTML": contents,
-    "data-ssr": !(opts.ssrContext.noSSR)
+    "data-ssr": !(true )
   };
   if (opts.src) {
     payload["data-src"] = opts.src;
