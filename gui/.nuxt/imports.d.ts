@@ -52,6 +52,7 @@ export { useContainersStore } from '../stores/containers';
 export { useDatabasesStore } from '../stores/databases';
 export { useLinksStore } from '../stores/links';
 export { useProjectsStore } from '../stores/projects';
+export { useStatsStore } from '../stores/stats';
 export { useColorMode } from '../node_modules/@nuxtjs/color-mode/dist/runtime/composables';
 export { defineStore, acceptHMRUpdate, usePinia, storeToRefs } from '../node_modules/@pinia/nuxt/dist/runtime/composables';
 export { definePageMeta } from '../node_modules/nuxt/dist/pages/runtime/composables';

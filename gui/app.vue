@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useStatsStore } from '~/stores/stats';
+
+const statsStore = useStatsStore();
 const colorMode = useColorMode()
 
 const color = computed(() => {
@@ -28,6 +31,14 @@ useSeoMeta({
   ogTitle: title,
   ogDescription: description,
 })
+
+onMounted(() => {
+  statsStore.startTracking();
+})
+
+onBeforeUnmount(() => {
+  statsStore.stopTracking();
+});
 </script>
 
 

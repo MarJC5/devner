@@ -23,6 +23,10 @@
   
   const handleLog = (log) => {
     logs.value.push(log);
+
+    nextTick(() => {
+      scrollToBottom();
+    });
   };
   
   const handleError = (error) => {
@@ -37,7 +41,9 @@
 
   const scrollToBottom = () => {
     if (logContainer.value) {
-        logContainer.value.scrollTop = logContainer.value.scrollHeight;
+      console.log(logContainer.value.scrollHeight);
+      // Scroll to the bottom of the log container
+      logContainer.value.scrollTop = logContainer.value.scrollHeight;
     }
     
 };
@@ -62,8 +68,8 @@
   });
   
   watch(logs, () => {
-        scrollToBottom();
-    });
+    scrollToBottom();
+  });
 
   watch(() => props.containerId, () => {
     logs.value = []; // Clear logs when containerId changes
@@ -77,4 +83,3 @@
     font-family: monospace; /* Use a monospaced font for logs */
   }
   </style>
-  ../utils/socket~/app/utils/socket

@@ -5,9 +5,9 @@ import { mkdirSync } from 'node:fs';
 import { parentPort, threadId } from 'node:worker_threads';
 import { defineEventHandler, handleCacheHeaders, splitCookiesString, isEvent, createEvent, fetchWithEvent, getRequestHeader, eventHandler, setHeaders, sendRedirect, proxyRequest, createError, setResponseHeader, send, getResponseStatus, setResponseStatus, setResponseHeaders, getRequestHeaders, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getRouterParam, getQuery as getQuery$1, readBody, getResponseStatusText } from 'file:///app/node_modules/h3/dist/index.mjs';
 import wsAdapter from 'file:///app/node_modules/crossws/dist/adapters/node.mjs';
+import Container from 'file:///app/utils/Container.js';
 import Docker from 'file:///app/node_modules/dockerode/lib/docker.js';
 import { PassThrough } from 'stream';
-import Container from 'file:///app/utils/Container.js';
 import Database from 'file:///app/utils/Database.js';
 import Project from 'file:///app/utils/Project.js';
 import { getRequestDependencies, getPreloadLinks, getPrefetchLinks, createRenderer } from 'file:///app/node_modules/vue-bundle-renderer/dist/runtime.mjs';
@@ -875,6 +875,21 @@ const dockerService = {
     return container.logs(options);
   },
   /**
+   * Get stats of a container by its id
+   * 
+   * @param {string} containerId
+   * @returns {Promise<Object>}
+   */
+  async getContainerStats(containerId) {
+    const container = docker$1.getContainer(containerId);
+    return container.stats({ stream: false });
+  },
+  async getAllContainerStats() {
+    const containers = await this.getContainers();
+    const statsPromises = await Promise.all(containers.map((container) => this.getContainerStats(container.Id)));
+    return statsPromises;
+  },
+  /**
    * Get a container by its id
    * 
    * @param {string} containerId
@@ -1118,6 +1133,7 @@ const errorHandler = (async function errorhandler(error, event) {
   return send(event, html);
 });
 
+const _lazy_dOFhxX = () => Promise.resolve().then(function () { return metrics$1; });
 const _lazy_Xq1guo = () => Promise.resolve().then(function () { return containers$1; });
 const _lazy_7V31Vt = () => Promise.resolve().then(function () { return details$1; });
 const _lazy_5PpzFi = () => Promise.resolve().then(function () { return exec$1; });
@@ -1126,8 +1142,10 @@ const _lazy_47iozw = () => Promise.resolve().then(function () { return rebuild$1
 const _lazy_MSNRPz = () => Promise.resolve().then(function () { return remove$1; });
 const _lazy_FJhOUB = () => Promise.resolve().then(function () { return restart$1; });
 const _lazy_k393Ja = () => Promise.resolve().then(function () { return start$1; });
+const _lazy_YWDQC2 = () => Promise.resolve().then(function () { return stats$3; });
 const _lazy_wlduN0 = () => Promise.resolve().then(function () { return stop$3; });
 const _lazy_pmlwFT = () => Promise.resolve().then(function () { return create$5; });
+const _lazy_rfiYhT = () => Promise.resolve().then(function () { return stats$1; });
 const _lazy_anV5ro = () => Promise.resolve().then(function () { return stop$1; });
 const _lazy_J9DFqo = () => Promise.resolve().then(function () { return create$3; });
 const _lazy_aw1UMx = () => Promise.resolve().then(function () { return _delete$3; });
@@ -1136,6 +1154,7 @@ const _lazy_JLcWz3 = () => Promise.resolve().then(function () { return create$1;
 const _lazy_1AROdB = () => Promise.resolve().then(function () { return renderer$1; });
 
 const handlers = [
+  { route: '/api/caddy/metrics', handler: _lazy_dOFhxX, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers', handler: _lazy_Xq1guo, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers/:id/details', handler: _lazy_7V31Vt, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers/:id/exec', handler: _lazy_5PpzFi, lazy: true, middleware: false, method: undefined },
@@ -1144,8 +1163,10 @@ const handlers = [
   { route: '/api/containers/:id/remove', handler: _lazy_MSNRPz, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers/:id/restart', handler: _lazy_FJhOUB, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers/:id/start', handler: _lazy_k393Ja, lazy: true, middleware: false, method: undefined },
+  { route: '/api/containers/:id/stats', handler: _lazy_YWDQC2, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers/:id/stop', handler: _lazy_wlduN0, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers/create', handler: _lazy_pmlwFT, lazy: true, middleware: false, method: undefined },
+  { route: '/api/containers/stats', handler: _lazy_rfiYhT, lazy: true, middleware: false, method: undefined },
   { route: '/api/containers/stop', handler: _lazy_anV5ro, lazy: true, middleware: false, method: undefined },
   { route: '/api/databases/:type/create', handler: _lazy_J9DFqo, lazy: true, middleware: false, method: undefined },
   { route: '/api/databases/delete', handler: _lazy_aw1UMx, lazy: true, middleware: false, method: undefined },
@@ -1351,6 +1372,46 @@ const errorDev = /*#__PURE__*/Object.freeze({
   template: template$1
 });
 
+function parseMetrics(metricsText) {
+  const metrics = [];
+  metricsText.forEach((line) => {
+    if (line.startsWith("#"))
+      return;
+    const match = line.match(/(\w+)\{([^}]*)\}\s+([\d\.]+)/);
+    if (match) {
+      const [, name, labels, value] = match;
+      const labelObj = {};
+      labels.split(",").forEach((label) => {
+        const [key, val] = label.split("=");
+        labelObj[key] = val.replace(/"/g, "");
+      });
+      metrics.push({ name, labels: labelObj, value: parseFloat(value) });
+    }
+  });
+  return metrics;
+}
+const metrics = defineEventHandler(async (event) => {
+  if (event.node.req.method !== "GET") {
+    return { status: "error" };
+  }
+  try {
+    const container = await Container.fetchContainerByName("frankenphp_devner");
+    if (!container) {
+      return { status: "error", message: "Failed to fetch container" };
+    }
+    const metricsText = await container.cmd("curl localhost:2019/metrics");
+    const parsedMetrics = parseMetrics(metricsText);
+    return { status: "success", data: parsedMetrics };
+  } catch (error) {
+    return { status: "error", message: error.message };
+  }
+});
+
+const metrics$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: metrics
+});
+
 const containers = defineEventHandler(async (event) => {
   if (event.node.req.method === "GET") {
     const containers = await dockerService.getContainers();
@@ -1504,6 +1565,24 @@ const start$1 = /*#__PURE__*/Object.freeze({
   default: start
 });
 
+const stats$2 = defineEventHandler(async (event) => {
+  if (event.node.req.method !== "GET") {
+    return { status: "error", message: "Invalid request method" };
+  }
+  const { id } = event.context.params;
+  try {
+    const stats = await dockerService.getContainerStats(id);
+    return { status: "success", data: stats };
+  } catch (error) {
+    return { status: "error", message: error.message };
+  }
+});
+
+const stats$3 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: stats$2
+});
+
 const stop$2 = defineEventHandler(async (event) => {
   if (event.node.req.method !== "POST") {
     return { status: "error" };
@@ -1530,6 +1609,107 @@ const create$4 = defineEventHandler(async (event) => {
 const create$5 = /*#__PURE__*/Object.freeze({
   __proto__: null,
   default: create$4
+});
+
+const calculateCPUUsage = (stats) => {
+  const cpuDelta = (stats.cpu_stats.cpu_usage.total_usage || 0) - (stats.precpu_stats.cpu_usage.total_usage || 0);
+  const systemDelta = (stats.cpu_stats.system_cpu_usage || 0) - (stats.precpu_stats.system_cpu_usage || 0);
+  if (systemDelta > 0 && cpuDelta > 0) {
+    const cpuUsage = cpuDelta / systemDelta * (stats.cpu_stats.online_cpus || 1) * 100;
+    return cpuUsage;
+  }
+  return 0;
+};
+const aggregateStats = (statsArray) => {
+  const aggregated = {
+    cpu: 0,
+    memory: 0,
+    memoryLimit: 0,
+    memoryRSS: 0,
+    memoryCache: 0,
+    memorySwap: 0,
+    network: {
+      rx: 0,
+      tx: 0,
+      rxErrors: 0,
+      txErrors: 0,
+      rxPackets: 0,
+      txPackets: 0
+    },
+    diskIO: {
+      readBytes: 0,
+      writeBytes: 0,
+      readOps: 0,
+      writeOps: 0
+    },
+    pids: 0,
+    cpuThrottling: {
+      periods: 0,
+      throttledPeriods: 0,
+      throttledTime: 0
+    }
+  };
+  statsArray.forEach((stats) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
+    aggregated.cpu += calculateCPUUsage(stats);
+    aggregated.memory += ((_a = stats.memory_stats) == null ? void 0 : _a.usage) || 0;
+    aggregated.memoryLimit += ((_b = stats.memory_stats) == null ? void 0 : _b.limit) || 0;
+    aggregated.memoryRSS += ((_d = (_c = stats.memory_stats) == null ? void 0 : _c.stats) == null ? void 0 : _d.rss) || 0;
+    aggregated.memoryCache += ((_f = (_e = stats.memory_stats) == null ? void 0 : _e.stats) == null ? void 0 : _f.cache) || 0;
+    aggregated.memorySwap += ((_h = (_g = stats.memory_stats) == null ? void 0 : _g.stats) == null ? void 0 : _h.mapped_file) || 0;
+    aggregated.pids += ((_i = stats.pids_stats) == null ? void 0 : _i.current) || 0;
+    aggregated.cpuThrottling.periods += ((_k = (_j = stats.cpu_stats) == null ? void 0 : _j.throttling_data) == null ? void 0 : _k.periods) || 0;
+    aggregated.cpuThrottling.throttledPeriods += ((_m = (_l = stats.cpu_stats) == null ? void 0 : _l.throttling_data) == null ? void 0 : _m.throttled_periods) || 0;
+    aggregated.cpuThrottling.throttledTime += ((_o = (_n = stats.cpu_stats) == null ? void 0 : _n.throttling_data) == null ? void 0 : _o.throttled_time) || 0;
+    if (stats.networks) {
+      Object.values(stats.networks).forEach((network) => {
+        aggregated.network.rx += network.rx_bytes || 0;
+        aggregated.network.tx += network.tx_bytes || 0;
+        aggregated.network.rxErrors += network.rx_errors || 0;
+        aggregated.network.txErrors += network.tx_errors || 0;
+        aggregated.network.rxPackets += network.rx_packets || 0;
+        aggregated.network.txPackets += network.tx_packets || 0;
+      });
+    }
+    if (stats.blkio_stats && stats.blkio_stats.io_service_bytes_recursive) {
+      stats.blkio_stats.io_service_bytes_recursive.forEach((io) => {
+        if (io.op === "Read") {
+          aggregated.diskIO.readBytes += io.value || 0;
+        }
+        if (io.op === "Write") {
+          aggregated.diskIO.writeBytes += io.value || 0;
+        }
+      });
+    }
+    if (stats.blkio_stats && stats.blkio_stats.io_serviced_recursive) {
+      stats.blkio_stats.io_serviced_recursive.forEach((io) => {
+        if (io.op === "Read") {
+          aggregated.diskIO.readOps += io.value || 0;
+        }
+        if (io.op === "Write") {
+          aggregated.diskIO.writeOps += io.value || 0;
+        }
+      });
+    }
+  });
+  return aggregated;
+};
+const stats = defineEventHandler(async (event) => {
+  if (event.node.req.method !== "GET") {
+    return { status: "error", message: "Invalid request method" };
+  }
+  try {
+    const stats = await dockerService.getAllContainerStats();
+    const aggregatedStats = aggregateStats(stats);
+    return { status: "success", data: aggregatedStats };
+  } catch (error) {
+    return { status: "error", message: error.message };
+  }
+});
+
+const stats$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  default: stats
 });
 
 const stop = defineEventHandler(async (event) => {

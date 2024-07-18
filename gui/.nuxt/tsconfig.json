@@ -102,10 +102,10 @@
         "../node_modules/@nuxt/ui/dist/runtime/*"
       ],
       "#ui-colors": [
-        "./ui.colors"
+        "./ui.colors.mjs"
       ],
       "#icon-collections": [
-        "./icon-collections"
+        "./icon-collections.mjs"
       ],
       "#color-mode-options": [
         "./color-mode-options.mjs"
@@ -121,9 +121,6 @@
       ],
       "#tailwind-config": [
         "./tailwind.config"
-      ],
-      "#tailwind-config/*": [
-        "./tailwind.config/*"
       ],
       "#app-manifest": [
         "./manifest/meta/dev.json"

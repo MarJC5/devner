@@ -31,6 +31,23 @@ export default {
     },
 
     /**
+     * Get stats of a container by its id
+     * 
+     * @param {string} containerId
+     * @returns {Promise<Object>}
+     */
+    async getContainerStats(containerId) {
+        const container = docker.getContainer(containerId);
+        return container.stats({ stream: false });
+    },
+
+    async getAllContainerStats() {
+        const containers = await this.getContainers();
+        const statsPromises =  await Promise.all(containers.map(container => this.getContainerStats(container.Id)));
+        return statsPromises;
+    },
+
+    /**
      * Get a container by its id
      * 
      * @param {string} containerId

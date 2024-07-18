@@ -6,6 +6,7 @@ services:
   mailpit:
     image: axllent/mailpit:latest
     container_name: mailpit_devner
+    tty: true
     restart: unless-stopped
     volumes:
       - /etc/localtime:/etc/localtime:ro
@@ -63,6 +64,7 @@ services:
       context: ./services/node
       dockerfile: Dockerfile
     container_name: node_devner
+    tty: true
     restart: unless-stopped
     environment:
       TZ: "Europe/Zurich"
@@ -118,12 +120,13 @@ services:
     image: adminer:latest
     restart: unless-stopped
     container_name: adminer_devner
+    tty: true
     ports:
       - '8080:8080'
     volumes:
       - /etc/localtime:/etc/localtime:ro
     environment:
-      ADMINER_DEFAULT_SERVER: mysql_8
+      ADMINER_DEFAULT_SERVER: mysql
       TZ: "Europe/Zurich"
     extra_hosts:
       - "adminer.localhost:127.0.0.1"

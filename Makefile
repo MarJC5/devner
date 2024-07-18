@@ -79,8 +79,16 @@ gui-build:
 	@echo "${GREEN}Entering nuxt container...${RESET}"
 	@${DOCKER} exec gui bash -c "yarn build"
 
-gui:
+gui: up
 	@echo "${GREEN}Entering nuxt container...${RESET}"
 	@${DOCKER} exec gui bash -c "yarn start"
+
+new-wp:
+	@echo "${GREEN}Creating new wordpress project...${RESET}"
+	@$(DOCKER) exec frankenphp bash -c "wp core download --path=${project_name} --locale=fr_FR --allow-root"
+
+new-laravel:
+	@echo "${GREEN}Creating new laravel project...${RESET}"
+	@$(DOCKER) exec frankenphp bash -c "composer create-project --prefer-dist laravel/laravel ${project_name}"
 
 .PHONY: all start up down stop rebuild delete

@@ -3,6 +3,9 @@ import type { Serialize, Simplify } from 'nitropack'
 declare module 'nitropack' {
   type Awaited<T> = T extends PromiseLike<infer U> ? Awaited<U> : T
   interface InternalApi {
+    '/api/caddy/metrics': {
+      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/caddy/metrics').default>>>>
+    }
     '/api/containers': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/containers').default>>>>
     }
@@ -27,11 +30,17 @@ declare module 'nitropack' {
     '/api/containers/:id/start': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/containers/[id]/start').default>>>>
     }
+    '/api/containers/:id/stats': {
+      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/containers/[id]/stats').default>>>>
+    }
     '/api/containers/:id/stop': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/containers/[id]/stop').default>>>>
     }
     '/api/containers/create': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/containers/create').default>>>>
+    }
+    '/api/containers/stats': {
+      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/containers/stats').default>>>>
     }
     '/api/containers/stop': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/containers/stop').default>>>>

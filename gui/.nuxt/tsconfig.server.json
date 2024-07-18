@@ -129,10 +129,7 @@
         "./vue-router"
       ],
       "#tailwind-config": [
-        "./tailwind.config"
-      ],
-      "#tailwind-config/*": [
-        "./tailwind.config/*"
+        "./tailwind"
       ]
     },
     "lib": [
