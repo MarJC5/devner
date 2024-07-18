@@ -12,6 +12,7 @@
     </UPageHeader>
     <UDashboardToolbar class="pl-0 py-4">
       <template #left>
+        <div class="flex flex-wrap items-stretch gap-2">
         <USelectMenu 
           class="capitalize"
           v-model="filter" 
@@ -35,6 +36,7 @@
           <UBadge variant="soft" color="teal" :label="'Disk Write: ' + (latestStats.diskIO.writeBytes / (1024 * 1024)).toFixed(2) + ' MB'" />
           <UBadge variant="soft" color="gray" :label="'PIDs: ' + latestStats.pids" />
         </div>
+      </div>
       </template>
     </UDashboardToolbar>
     <StatsGraph 
