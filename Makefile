@@ -105,4 +105,8 @@ remove:
 	@echo "${RED}Removing project...${RESET}"
 	@$(DOCKER) exec frankenphp bash -c "rm -rf ${project_name}"
 
+dev:
+	@echo "${GREEN}Opening devner...${RESET}"
+	@code .
+
 .PHONY: all start up down stop rebuild delete

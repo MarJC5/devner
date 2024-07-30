@@ -78,6 +78,9 @@ else
         add-host|remove-host|list-hosts)
             execute_caddyfile $@
             ;;
+        open)
+            make dev -C ${SRCS_DIR}
+            ;;
         *)
             echo -e "\n${RED}Invalid command${NC}: $1\n"
             echo -e "Run ${YELLOW}$0 help${NC} to see the list of available commands."
