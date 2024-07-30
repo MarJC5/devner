@@ -12,14 +12,14 @@ RUN mkdir -p $NVM_DIR
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash \
     && . "$NVM_DIR/nvm.sh"
 
-ENV NODE_VERSION_16 16
 ENV NODE_VERSION_18 18
 ENV NODE_VERSION_20 20
+ENV NODE_VERSION_22 22
 
 # Use separate RUN commands to ensure that NVM is properly sourced each time
-RUN . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION_16 && nvm use $NODE_VERSION_16
 RUN . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION_18 && nvm use $NODE_VERSION_18
 RUN . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION_20 && nvm use $NODE_VERSION_20
+RUN . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION_22 && nvm use $NODE_VERSION_22
 RUN . "$NVM_DIR/nvm.sh" && nvm install --lts && nvm use --lts
 
 # Optionally set a default Node version

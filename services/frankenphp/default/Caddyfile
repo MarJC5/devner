@@ -5,11 +5,6 @@
  order php_server before file_server
 }
 
-localhost {
-    reverse_proxy /api/* gui:3000
-    reverse_proxy /* gui:3000
-}
-
 mailpit.localhost {
     reverse_proxy mailpit_devner:8025
 }

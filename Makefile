@@ -20,8 +20,6 @@ DOCKER		=  docker compose -f ${DOCKER_DIR} -p devner
 
 all: up
 
-start: up
-
 up:
 	@echo "${GREEN}Starting containers...${RESET}"
 	@${DOCKER} up -d --remove-orphans
@@ -55,33 +53,33 @@ frankenphp:
 	@echo "${GREEN}Entering frankenphp container...${RESET}"
 	@${DOCKER} exec frankenphp bash
 
+reload:
+	@echo "${GREEN}Restarting frankenphp container...${RESET}"
+	@${DOCKER} restart frankenphp
+
 mysql:
 	@echo "${GREEN}Entering mysql container...${RESET}"
 	@${DOCKER} exec mysql bash
+
+new-mysql:
+	@echo "${GREEN}Creating new mysql database...${RESET}"
+	@${DOCKER} exec mysql bash -c "./create.sh ${database_name} ${database_user} ${database_password}"
+
+remove-mysql:
+	@echo "${RED}Removing mysql database...${RESET}"
+	@${DOCKER} exec mysql bash -c "./remove.sh ${database_name} ${database_user}"
 
 postgres:
 	@echo "${GREEN}Entering postgres container...${RESET}"
 	@${DOCKER} exec postgres bash
 
-nuxt:
-	@echo "${GREEN}Entering nuxt container...${RESET}"
-	@${DOCKER} exec gui bash
+remove-postgres:
+	@echo "${RED}Removing postgres database...${RESET}"
+	@${DOCKER} exec postgres bash -c "./remove.sh ${database_name} ${database_user}"
 
-gui-clean:
-	@echo "${GREEN}Entering nuxt container...${RESET}"
-	@${DOCKER} exec gui bash -c "npx nuxi cleanup"
-
-gui-dev:
-	@echo "${GREEN}Entering nuxt container...${RESET}"
-	@${DOCKER} exec gui bash -c "yarn dev"
-
-gui-build:
-	@echo "${GREEN}Entering nuxt container...${RESET}"
-	@${DOCKER} exec gui bash -c "yarn build"
-
-gui: up
-	@echo "${GREEN}Entering nuxt container...${RESET}"
-	@${DOCKER} exec gui bash -c "yarn start"
+new-postgres:
+	@echo "${GREEN}Creating new postgres database...${RESET}"
+	@${DOCKER} exec postgres bash -c "./create.sh ${database_name} ${database_user} ${database_password}"
 
 new-wp:
 	@echo "${GREEN}Creating new wordpress project...${RESET}"
@@ -90,5 +88,9 @@ new-wp:
 new-laravel:
 	@echo "${GREEN}Creating new laravel project...${RESET}"
 	@$(DOCKER) exec frankenphp bash -c "composer create-project --prefer-dist laravel/laravel ${project_name}"
+
+remove:
+	@echo "${RED}Removing project...${RESET}"
+	@$(DOCKER) exec frankenphp bash -c "rm -rf ${project_name}"
 
 .PHONY: all start up down stop rebuild delete
