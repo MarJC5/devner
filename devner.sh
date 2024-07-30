@@ -23,6 +23,16 @@ source "${SRCS_DIR}/cli/cmd/project_commands.sh"
 # Style
 THEME=${NC}
 
+# Check if the projects directory exists
+if [ ! -d "${PROJECTS_DIR}" ]; then
+    mkdir -p "${PROJECTS_DIR}"
+fi
+
+# Check if Cadddyfile exists
+if [ ! -f "${SRCS_DIR}/services/frankenphp/Caddyfile" ]; then
+    cp "${SRCS_DIR}/services/frankenphp/default/Caddyfile.example" "${SRCS_DIR}/services/frankenphp/Caddyfile"
+fi
+
 if [ -z "$1" ]; then
     while true; do
         show_menu
@@ -30,39 +40,39 @@ if [ -z "$1" ]; then
     done
 else
     case $1 in
+        
         up|down|stop|rebuild|delete|nocache|reload)
             execute_general_command $1
-            ;;
-        postgres|mysql)
-            execute_db_command $1
-            ;;
-        new-mysql|new-postgres)
-            shift
-            execute_new_db_command $1 $@
-            ;;
-        remove-mysql|remove-postgres)
-            shift
-            execute_remove_db_command $1 $@
             ;;
         node|frankenphp)
             execute_quick_access_command $1
             ;;
-        new|delete)
-            shift
-            execute_project_command $1 $@
-            ;;
         ps|alias|code)
             execute_other_command $1
             ;;
-        add-host|remove-host|list-hosts)
-            shift
-            execute_caddyfile $1 $@
+        postgres|mysql)
+            execute_db_command $1
             ;;
         help|--h)
             show_help
             ;;
         credit|--c)
             handle_credit
+            ;;
+        new-mysql|new-postgres)
+            execute_new_db_command $@
+            ;;
+        remove-mysql|remove-postgres)
+            execute_remove_db_command $@
+            ;;
+        check-mysql|check-postgres)
+            execute_db_user_check $@
+            ;;
+        new|delete)
+            execute_project_command $@
+            ;;
+        add-host|remove-host|list-hosts)
+            execute_caddyfile $@
             ;;
         *)
             echo -e "\n${RED}Invalid command${NC}: $1\n"

@@ -35,7 +35,7 @@ dbname=$(echo $dbname | sed 's/[^a-zA-Z0-9]//g')
 dbuser=$(echo $dbuser | sed 's/[^a-zA-Z0-9]//g')
 
 # Login to MySQL and execute commands to drop the database and user
-mysql -u root -p'devner' <<EOF
+mysql -u root -p'devner' 2>/dev/null <<EOF
 DROP DATABASE IF EXISTS \`$dbname\`;
 DROP USER IF EXISTS '$dbuser'@'%';
 FLUSH PRIVILEGES;
@@ -47,20 +47,6 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Check if the database and user were removed successfully in the database
-
-if [ $(mysql -u root -p'devner' -e "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$dbname';" | wc -l) -ne 1 ]; then
-    # If the database still exists return an error
-    echo -e "${RED}Error removing database.${NC}"
-    exit 1
-fi
-
-if [ $(mysql -u root -p'devner' -e "SELECT User FROM mysql.user WHERE User = '$dbuser';" | wc -l) -ne 1 ]; then
-    # If the user still exists return an error
-    echo -e "${RED}Error removing user.${NC}"
-    exit 1
-fi
-
 echo -e "${GREEN}Database and user removed.${NC}"
 
-
+exit 0

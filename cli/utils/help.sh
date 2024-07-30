@@ -17,7 +17,9 @@ show_help() {
     echo -e "${YELLOW}- new-mysql <database_name> <database_user> <database_password>${NC} - Create a new MySQL database and user."
     echo -e "${YELLOW}- new-postgres <database_name> <database_user> <database_password>${NC} - Create a new PostgreSQL database and user."
     echo -e "${YELLOW}- remove-mysql <database_name> <database_user>${NC} - Remove a MySQL database and user."
-    echo -e "${YELLOW}- remove-postgres <database_name> <database_user>${NC} - Remove a PostgreSQL database and user.\n"
+    echo -e "${YELLOW}- remove-postgres <database_name> <database_user>${NC} - Remove a PostgreSQL database and user."
+    echo -e "${YELLOW}- check-mysql <database_name> <database_user>${NC} - Check if a MySQL database and user exist."
+    echo -e "${YELLOW}- check-postgres <database_name> <database_user>${NC} - Check if a PostgreSQL database and user exist.\n"
     
     echo -e "${BOLD}Quick Access Commands:${NC}"
     echo -e "${YELLOW}- postgres${NC} - Access the PostgreSQL container."
@@ -27,7 +29,7 @@ show_help() {
     
     echo -e "${BOLD}Project Commands:${NC}"
     echo -e "${YELLOW}- new <laravel/wp> <project name> <mysql/postgres>${NC} - Create a new Laravel or WordPress project."
-    echo -e "${YELLOW}- delete <project name> <mysql/postgres>${NC} - Delete a project and its database.\n"
+    echo -e "${YELLOW}- remove <project name> <mysql/postgres>${NC} - Delete a project and its database.\n"
     
     echo -e "${BOLD}Other Commands:${NC}"
     echo -e "${YELLOW}- ps${NC} - Check if the devner container is running."

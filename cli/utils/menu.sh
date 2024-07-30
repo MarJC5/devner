@@ -30,7 +30,7 @@ show_menu() {
     
     project_commands=(
         "16) new"
-        "17) delete"
+        "17) remove"
     )
     
     other_commands=(
@@ -168,11 +168,11 @@ handle_menu_selection() {
             execute_project_command new "$proj_type" "$proj_name" "$db_type"
             read -p "Press [Enter] key to continue..."
             ;;
-        17 | "delete")
+        17 | "remove")
             clear
             read -p "Enter project name: " proj_name
             read -p "Enter database type (mysql/postgres): " db_type
-            execute_project_command delete "" "$proj_name" "$db_type"
+            execute_project_command remove "" "$proj_name" "$db_type"
             read -p "Press [Enter] key to continue..."
             ;;
         18 | "ps") clear; execute_other_command ps; read -p "Press [Enter] key to continue..." ;;

@@ -71,6 +71,7 @@ services:
     volumes:
       - ./services/mysql/scripts/create.sh:/create.sh
       - ./services/mysql/scripts/remove.sh:/remove.sh
+      - ./services/mysql/scripts/check.sh:/check.sh
       - ./services/mysql/config/.my.cnf:/.my.cnf
       - mysql_data:/var/lib/mysql
       - /etc/localtime:/etc/localtime:ro
@@ -91,6 +92,7 @@ services:
     volumes:
       - ./services/postgres/scripts/create.sh:/create.sh
       - ./services/postgres/scripts/remove.sh:/remove.sh
+      - ./services/postgres/scripts/check.sh:/check.sh
       - ./services/postgres/config/.pgpass:/.pgpass
       - postgres_data:/var/lib/postgresql/data
       - /etc/localtime:/etc/localtime:ro

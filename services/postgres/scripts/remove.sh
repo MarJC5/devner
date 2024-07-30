@@ -52,17 +52,6 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Check if the database and user were removed successfully
-if [ $(psql -U devner -d devner -tc "SELECT 1 FROM pg_database WHERE datname = '$dbname'" | grep -q 1) ]; then
-    # If the database still exists return an error
-    echo -e "${RED}Error removing database.${NC}"
-    exit 1
-fi
-
-if [ $(psql -U devner -d devner -tc "SELECT 1 FROM pg_roles WHERE rolname = '$dbuser'" | grep -q 1) ]; then
-    # If the user still exists return an error
-    echo -e "${RED}Error removing user.${NC}"
-    exit 1
-fi
-
 echo -e "${GREEN}Database and user removed.${NC}"
+
+exit 0

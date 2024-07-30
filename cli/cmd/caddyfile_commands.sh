@@ -49,14 +49,14 @@ execute_caddyfile() {
     case $action in
         add-host)
             if [ -z "$root" ]; then
-                echo -e "${RED}Error: Root directory is required for adding a host.${NC}"
+                echo -e "${RED}Root directory is required for adding a host.${NC}"
                 show_caddyfile_help
                 return 1
             fi
 
             # Check if the host already exists
             if grep -q "$host" "$CADDYFILE_PATH"; then
-                echo -e "${RED}Error: Host $host already exists in the Caddyfile.${NC}"
+                echo -e "${RED}Host $host already exists in the Caddyfile.${NC}"
                 return 1
             fi
 
@@ -71,19 +71,29 @@ $host {
 EOF
             echo -e "${GREEN}Host $host added successfully.${NC}"
             make reload -C ${SRCS_DIR}
+            return 0
             ;;
         remove-host)
             # Remove the host configuration
             if ! grep -q "$host" "$CADDYFILE_PATH"; then
-                echo -e "${RED}Error: Host $host not found in the Caddyfile.${NC}"
+                echo -e "${RED}Host $host not found in the Caddyfile.${NC}"
                 return 1
             fi
 
             # Use sed to delete the lines between the host declaration and the next blank line
-            # Uncoment the following line to generate a backup file
-            # sed -i.bak "/$host {/,/^$/d" "$CADDYFILE_PATH"
-            echo -e "${GREEN}Host $host removed successfully.${NC}"
+            sed -i "" "/$host {/,/^$/d" "$CADDYFILE_PATH"
+            
+            # Check if the host was removed successfully
+            if grep -q "$host" "$CADDYFILE_PATH"; then
+                echo -e "${RED}Error: Failed to remove host $host.${NC}\n"
+                return 1
+            fi
+
+            echo -e "${GREEN}Host $host removed successfully.${NC}\n"
+
             make reload -C ${SRCS_DIR}
+
+            return 0
             ;;
         list-hosts)
             list_hosts

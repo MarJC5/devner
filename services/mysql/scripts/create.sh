@@ -37,13 +37,15 @@ dbname=$(echo $dbname | sed 's/[^a-zA-Z0-9]//g')
 dbuser=$(echo $dbuser | sed 's/[^a-zA-Z0-9]//g')
 
 # Check if the database already exists
-if [ $(mysql -u root -p'devner' -e "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$dbname';" | wc -l) -ne 1 ]; then
-    echo -e "${RED}Database already exists.${NC}"
-    exit 1
+./check.sh $dbname $dbuser > /dev/null
+
+if [ $? -eq 0 ]; then
+  echo -e "${RED}Database or user already exists.${NC}"
+  exit 1
 fi
 
 # Login to MySQL and execute commands
-mysql -u root -p'devner' <<EOF
+mysql -u root -p'devner' 2>/dev/null <<EOF
 CREATE DATABASE IF NOT EXISTS \`$dbname\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '$dbuser'@'%' IDENTIFIED BY '$dbpass';
 GRANT ALL PRIVILEGES ON \`$dbname\`.* TO '$dbuser'@'%';
@@ -60,3 +62,4 @@ echo -e "${GREEN}Database and user created.${NC}"
 echo "Database: $dbname"
 echo "Username: $dbuser"
 
+exit 0

@@ -37,9 +37,11 @@ dbname=$(echo $dbname | sed 's/[^a-zA-Z0-9]//g')
 dbuser=$(echo $dbuser | sed 's/[^a-zA-Z0-9]//g')
 
 # Check if the database already exists
-if [ $(psql -U devner -d devner -tc "SELECT 1 FROM pg_database WHERE datname = '$dbname'" | grep -q 1) ]; then
-    echo -e "${RED}Database already exists.${NC}"
-    exit 1
+./check.sh $dbname $dbuser > /dev/null
+
+if [ $? -eq 0 ]; then
+  echo -e "${RED}Database or user already exists.${NC}"
+  exit 1
 fi
 
 # Check if dblink extension is available
@@ -70,3 +72,5 @@ fi
 echo -e "${GREEN}Database and user created.${NC}"
 echo "Database: $dbname"
 echo "Username: $dbuser"
+
+exit 0

@@ -69,17 +69,25 @@ remove-mysql:
 	@echo "${RED}Removing mysql database...${RESET}"
 	@${DOCKER} exec mysql bash -c "./remove.sh ${database_name} ${database_user}"
 
+check-mysql:
+	@echo "${GREEN}Checking mysql database...${RESET}"
+	@${DOCKER} exec mysql bash -c "./check.sh ${database_name} ${database_user}"
+
 postgres:
 	@echo "${GREEN}Entering postgres container...${RESET}"
 	@${DOCKER} exec postgres bash
+
+new-postgres:
+	@echo "${GREEN}Creating new postgres database...${RESET}"
+	@${DOCKER} exec postgres bash -c "./create.sh ${database_name} ${database_user} ${database_password}"
 
 remove-postgres:
 	@echo "${RED}Removing postgres database...${RESET}"
 	@${DOCKER} exec postgres bash -c "./remove.sh ${database_name} ${database_user}"
 
-new-postgres:
-	@echo "${GREEN}Creating new postgres database...${RESET}"
-	@${DOCKER} exec postgres bash -c "./create.sh ${database_name} ${database_user} ${database_password}"
+check-postgres:
+	@echo "${GREEN}Checking postgres database...${RESET}"
+	@${DOCKER} exec postgres bash -c "./check.sh ${database_name} ${database_user}"
 
 new-wp:
 	@echo "${GREEN}Creating new wordpress project...${RESET}"
