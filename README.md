@@ -133,7 +133,7 @@ The following services are defined in the `docker-compose.yml` file:
 ### Services
 
 - **mailpit**: A local email testing service.
-- **frankenphp**: A PHP server with Caddy and PHP-FPM.
+- **frankenphp**: A PHP server with Caddy.
 - **node**: A Node.js development container.
 - **mysql**: MySQL database server.
 - **postgres**: PostgreSQL database server.
