@@ -1,6 +1,3 @@
-Based on your provided `docker-compose` file, the `devner.sh` script, and the CLI menu script, here's an updated and comprehensive `README.md` for your Devner project:
-
-```markdown
 # Devner
 
 ## Description
@@ -153,9 +150,9 @@ The following services are defined in the `docker-compose.yml` file:
 
 Connect with me:
 
-- **GitHub**: [yourusername](https://github.com/MarJC5)
-- **LinkedIn**: [yourlinkedinprofile](https://linkedin.com/in/jean-christio-martin-385574111)
-- **Twitter**: [@yourtwitterhandle](https://twitter.com/jeanchristio)
+- **GitHub**: [MarJC5](https://github.com/MarJC5)
+- **LinkedIn**: [Jean-Christio Martin](https://linkedin.com/in/jean-christio-martin-385574111)
+- **Twitter**: [@jeanchristio](https://twitter.com/jeanchristio)
 
 ## License
 
