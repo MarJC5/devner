@@ -72,7 +72,7 @@ else
         check-mysql|check-postgres)
             execute_db_user_check $@
             ;;
-        new|delete)
+        new|--n|delete|--d)
             execute_project_command $@
             ;;
         add-host|remove-host|list-hosts)

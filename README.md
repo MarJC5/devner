@@ -83,6 +83,7 @@ The Devner menu allows you to manage various aspects of your development environ
 - **ps**: Check if the devner container is running.
 - **alias**: Add the devner alias to .bashrc or .zshrc.
 - **code**: Open a project in VSCode.
+- **wp**: Run wp-cli commands.
 
 ### Caddyfile Commands
 

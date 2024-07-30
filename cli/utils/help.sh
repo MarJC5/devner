@@ -34,7 +34,9 @@ show_help() {
     echo -e "${BOLD}Other Commands:${NC}"
     echo -e "${YELLOW}- ps${NC} - Check if the devner container is running."
     echo -e "${YELLOW}- alias${NC} - Add the devner alias to .bashrc or .zshrc."
-    echo -e "${YELLOW}- code${NC} - Open a project in VSCode.\n"
+    echo -e "${YELLOW}- code${NC} - Open a project in VSCode."
+    echo -e "${YELLOW}- wp${NC} - Run wp-cli commands."
+
 
     echo -e "${BOLD}Caddyfile Management Commands:${NC}"
     echo -e "${YELLOW}- add-host <host> <root>${NC} - Add a new host to the Caddyfile."

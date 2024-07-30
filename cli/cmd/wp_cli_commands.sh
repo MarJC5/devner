@@ -4,7 +4,7 @@
 show_wp_cli_help() {
     echo -e "Usage: ${BOLD}$0 wp <project_name> <wp_args>\n"
     echo -e "Commands:"
-    echo -e "  ${YELLOW}wp-cli <project_name> <wp_args>${NC} Run wp commands"
+    echo -e "  ${YELLOW}wp <project_name> <wp_args>${NC} Run wp commands"
     echo -e "\nArguments:"
     echo -e "  ${YELLOW}<project_name>${NC}          The project to target"
     echo -e "  ${YELLOW}<wp_args>${NC}               The args of the command."
