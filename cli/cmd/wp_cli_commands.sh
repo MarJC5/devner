@@ -2,7 +2,7 @@
 
 # Show help for wp-cli usage
 show_wp_cli_help() {
-    echo -e "Usage: ${BOLD}$0 wp-cli <project_name> <wp_args>\n"
+    echo -e "Usage: ${BOLD}$0 wp <project_name> <wp_args>\n"
     echo -e "Commands:"
     echo -e "  ${YELLOW}wp-cli <project_name> <wp_args>${NC} Run wp commands"
     echo -e "\nArguments:"
@@ -23,7 +23,7 @@ execute_wp_cli() {
         return 1
     fi
 
-    make wp-cli -C ${SRCS_DIR} project_name="$wp_dir" wp_args="$wp_args"
+    make wp -C ${SRCS_DIR} project_name="$wp_dir" wp_args="$wp_args"
 }
 
 # Function to run wp-cli commands
@@ -38,5 +38,5 @@ execute_wp_cli_menu() {
         return 1
     fi
 
-    make wp-cli -C ${SRCS_DIR} project_name="$wp_dir" wp_args="$wp_args"
+    make wp -C ${SRCS_DIR} project_name="$wp_dir" wp_args="$wp_args"
 }
