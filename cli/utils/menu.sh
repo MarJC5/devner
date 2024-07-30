@@ -37,12 +37,13 @@ show_menu() {
         "18) ps"
         "19) alias"
         "20) code"
+        "21) wp"
     )
     
     caddyfile_commands=(
-        "21) add-host"
-        "22) remove-host"
-        "23) list-hosts"
+        "22) add-host"
+        "23) remove-host"
+        "24) list-hosts"
     )
     
     help_and_quit_commands=(
@@ -111,7 +112,7 @@ handle_menu_selection() {
         STATUS=0
     fi
 
-    read -p "Enter your choice [1-23] or command name (q to quit): " choice
+    read -p "Enter your choice [1-24] or command name (q to quit): " choice
 
     # Map numbers to command names
     case $choice in
@@ -178,20 +179,26 @@ handle_menu_selection() {
         18 | "ps") clear; execute_other_command ps; read -p "Press [Enter] key to continue..." ;;
         19 | "alias") clear; execute_other_command alias; read -p "Press [Enter] key to continue..." ;;
         20 | "code") clear; execute_other_command code ;;
-        21 | "add-host")
+        21 | "wp") 
+            clear
+            read -p "Enter command <project_name> <args>: " -a args
+            execute_wp_cli_menu "${args[@]}"
+            read -p "Press [Enter] key to continue..."
+            ;;
+        22 | "add-host")
             clear
             read -p "Enter host name: " host
             read -p "Enter root directory: " root
             execute_caddyfile add-host "$host" "$root"
             read -p "Press [Enter] key to continue..."
             ;;
-        22 | "remove-host")
+        23 | "remove-host")
             clear
             read -p "Enter host name: " host
             execute_caddyfile remove-host "$host"
             read -p "Press [Enter] key to continue..."
             ;;
-        23 | "list-hosts") clear; execute_caddyfile list-hosts; read -p "Press [Enter] key to continue..." ;;
+        24 | "list-hosts") clear; execute_caddyfile list-hosts; read -p "Press [Enter] key to continue..." ;;
         c | "credit") clear; handle_credit; echo ; read -p "Press [Enter] key to continue..." ;;
         h | "help") clear; handle_help_selection ;;
         q | "quit") clear; exit 0 ;;

@@ -19,6 +19,7 @@ source "${SRCS_DIR}/cli/cmd/quick_access_commands.sh"
 source "${SRCS_DIR}/cli/cmd/other_commands.sh"
 source "${SRCS_DIR}/cli/cmd/caddyfile_commands.sh"
 source "${SRCS_DIR}/cli/cmd/project_commands.sh"
+source "${SRCS_DIR}/cli/cmd/wp_cli_commands.sh"
 
 # Style
 THEME=${NC}
@@ -43,6 +44,9 @@ else
         
         up|down|stop|rebuild|delete|nocache|reload)
             execute_general_command $1
+            ;;
+        wp)
+            execute_wp_cli $@
             ;;
         node|frankenphp)
             execute_quick_access_command $1

@@ -53,6 +53,10 @@ frankenphp:
 	@echo "${GREEN}Entering frankenphp container...${RESET}"
 	@${DOCKER} exec frankenphp bash
 
+wp:
+	@echo "${GREEN}Running wp-cli...${RESET}"
+	@${DOCKER} exec -it frankenphp wp --path=/var/www/html/${project_name} ${wp_args} --allow-root
+
 reload:
 	@echo "${GREEN}Restarting frankenphp container...${RESET}"
 	@${DOCKER} restart frankenphp
