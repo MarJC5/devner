@@ -2,7 +2,7 @@
 FROM debian:bullseye-slim
 
 # Install dependencies
-RUN apt-get update && apt-get install -y curl git bash build-essential
+RUN apt-get update && apt-get install -y curl git bash build-essential libnss3-tools
 
 # Install nvm
 ENV NVM_DIR /usr/local/nvm
@@ -51,7 +51,17 @@ RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
 
 ENV LC_ALL en_US.UTF-8 
 ENV LANG en_US.UTF-8  
-ENV LANGUAGE en_US:en 
+ENV LANGUAGE en_US:en
+
+# Create directories for certificates
+RUN mkdir -p /certs
+
+# Install mkcert and generate certificates
+RUN curl -JLO https://dl.filippo.io/mkcert/latest?for=linux/amd64 && \
+    mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert && \
+    chmod +x /usr/local/bin/mkcert && \
+    mkcert -install
+
 
 # Copy your application source
 WORKDIR /home/dev/apps/

@@ -66,5 +66,7 @@ ENV LANGUAGE en_US:en
 # Install MailPit (SMTP testing tool)
 RUN curl -sL https://raw.githubusercontent.com/axllent/mailpit/develop/install.sh | bash
 
+RUN export PATH="$PATH:$HOME/.composer/vendor/bin" >> ~/.bashrc
+
 # Set the working directory
 WORKDIR /var/www/html
