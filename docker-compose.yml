@@ -54,6 +54,7 @@ services:
     ports:
       # For local development outside of the container
       - '5173:5173'
+      - '3000:3000'
     volumes:
       # mount your Node.js projects
       - ~/.nuxtrc:/.nuxtrc
@@ -108,11 +109,10 @@ services:
     restart: unless-stopped
     container_name: adminer_devner
     tty: true
-    ports:
-      - '8080:8080'
     volumes:
       - /etc/localtime:/etc/localtime:ro
     environment:
+      ADMINER_PLUGINS: "tables-filter tinymce json-column dump-zip"
       ADMINER_DEFAULT_SERVER: mysql
       TZ: "Europe/Zurich"
     extra_hosts:

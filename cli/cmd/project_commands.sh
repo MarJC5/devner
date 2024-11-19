@@ -148,7 +148,7 @@ execute_project_command() {
             return 1
         fi
 
-        execute_caddyfile add-host ${host_name} "/var/www/html/${project_name}" > /dev/null
+        execute_caddyfile add-host ${host_name} "${root_dir}" > /dev/null
 
         # check return value of add command
         if [ $? -eq 0 ]; then

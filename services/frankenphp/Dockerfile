@@ -17,10 +17,13 @@ RUN install-php-extensions \
     gd \
     intl \
     zip \
-    opcache
+    opcache \
+    pcntl \
+    exif
 
 RUN apt-get update && \
     apt-get install -y \
+    postgresql-client \
     postfix \
     mailutils \
     libnss3-tools \

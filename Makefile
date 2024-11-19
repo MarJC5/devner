@@ -47,11 +47,11 @@ delete:
 
 node:
 	@echo "${GREEN}Entering node container...${RESET}"
-	@${DOCKER} exec node bash
+	@${DOCKER} exec -w /home/dev/apps$(CURRENT_DIR) node bash
 
 frankenphp:
 	@echo "${GREEN}Entering frankenphp container...${RESET}"
-	@${DOCKER} exec frankenphp bash
+	@${DOCKER} exec -w /var/www/html$(CURRENT_DIR) frankenphp bash
 
 wp:
 	@echo "${GREEN}Running wp-cli...${RESET}"
