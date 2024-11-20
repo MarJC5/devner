@@ -52,7 +52,7 @@ else
             execute_quick_access_command $1
             ;;
         ps|alias|code)
-            execute_other_command $1
+            execute_other_command $1 $2
             ;;
         postgres|mysql)
             execute_db_command $1

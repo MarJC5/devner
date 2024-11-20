@@ -34,6 +34,19 @@ check_ps() {
 }
 
 open_code() {
+    # Check if $1 is not empty to open a specific project or show a list of projects
+    if [ -n "$1" ]; then
+        local project_name=$1
+        local project_path="${PROJECTS_DIR}/${project_name}"
+        if [ -d "$project_path" ]; then
+            echo -e "${GREEN}Opening ${project_name} in VSCode...${NC}"
+            code "${project_path}"
+        else
+            echo -e "${RED}Project ${project_name} not found.${NC}"
+        fi
+        return
+    fi
+
     echo -e "\n${UNDERLINE}${BOLD}Available Projects:${NC}\n"
     projects=($(ls -d ${PROJECTS_DIR}/*/))
     local half=$(((${#projects[@]} + 1) / 2))
@@ -121,12 +134,13 @@ add_alias() {
 
 execute_other_command() {
     local command=$1
+    local argument=$2
     case $command in
         ps)
             check_ps
             ;;
         code)
-            open_code
+            open_code $argument
             ;;
         alias)
             add_alias
