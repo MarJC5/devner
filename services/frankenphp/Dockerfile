@@ -23,6 +23,7 @@ RUN install-php-extensions \
 
 RUN apt-get update && \
     apt-get install -y \
+    mariadb-client \
     postgresql-client \
     postfix \
     mailutils \
