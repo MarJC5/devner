@@ -109,7 +109,7 @@ open_code() {
 
 
 add_alias() {
-    local alias_command="alias devner='bash \${SRCS_DIR}/devner.sh'"
+    local alias_command="alias devner='bash ${SRCS_DIR}/devner.sh'"
 
     if [ -f "$HOME/.bashrc" ]; then
         if ! grep -q "alias devner=" "$HOME/.bashrc"; then
@@ -132,6 +132,33 @@ add_alias() {
     fi
 }
 
+remove_alias() {
+    local alias_pattern="alias devner="
+
+    # Function to remove alias from a specific file
+    remove_alias_from_file() {
+        local file=$1
+        if [ -f "$file" ]; then
+            if grep -q "$alias_pattern" "$file"; then
+                if [[ "$OSTYPE" == "darwin"* ]]; then
+                    # macOS requires a backup suffix for -i or an empty string
+                    sed -i '' "/$alias_pattern/d" "$file"
+                else
+                    # Linux and other systems
+                    sed -i "/$alias_pattern/d" "$file"
+                fi
+                echo -e "Alias removed from ${GREEN}${file}${NC}."
+            else
+                echo -e "No alias found in ${GREEN}${file}${NC}."
+            fi
+        fi
+    }
+
+    # Remove alias from bashrc and zshrc if they exist
+    remove_alias_from_file "$HOME/.bashrc"
+    remove_alias_from_file "$HOME/.zshrc"
+}
+
 execute_other_command() {
     local command=$1
     local argument=$2
@@ -143,7 +170,21 @@ execute_other_command() {
             open_code $argument
             ;;
         alias)
-            add_alias
+            case $argument in
+                add)
+                    add_alias
+                    ;;
+                remove)
+                    remove_alias
+                    ;;
+                *)
+                    echo -e "${RED}Invalid argument for alias command${NC}: $argument"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        path)
+            add_to_path
             ;;
     esac
 }

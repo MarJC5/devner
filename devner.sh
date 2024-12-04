@@ -78,6 +78,24 @@ else
         add-host|remove-host|list-hosts)
             execute_caddyfile $@
             ;;
+        localhost)
+            shift
+            case $1 in
+                ensure-hosts)
+                    execute_hosts_action ensure-hosts
+                    ;;
+                add-host|remove-host|list-hosts)
+                    execute_hosts_action $@
+                    ;;
+                *)
+                    echo -e "${RED}Invalid action for localhost${NC}: $1"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        trust-ca)
+            trust_caddy_root_ca
+            ;;
         open)
             make dev -C ${SRCS_DIR}
             ;;

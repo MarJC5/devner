@@ -12,3 +12,9 @@ mailpit.localhost {
 adminer.localhost {
     reverse_proxy adminer_devner:8080
 }
+
+(global) {
+    file_server
+    php_server
+    tls internal
+}

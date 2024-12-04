@@ -36,6 +36,8 @@ services:
       - ./projects:/var/www/html/
       - ./services/frankenphp/Caddyfile:/etc/caddy/Caddyfile
       - ./services/frankenphp/config/php.ini:/usr/local/etc/php/php.ini
+      - caddy_data:/data # Persist Caddy's data (certificates)
+      - caddy_config:/config # Persist Caddy's configuration
     tty: true
     depends_on:
       - mysql
@@ -121,3 +123,5 @@ services:
 volumes:
   mysql_data:
   postgres_data:
+  caddy_data:
+  caddy_config:

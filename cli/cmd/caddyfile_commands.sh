@@ -3,6 +3,59 @@
 # Path to the Caddyfile
 CADDYFILE_PATH="${SRCS_DIR}/services/frankenphp/Caddyfile"
 
+# Determine the hosts file location based on OS
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+    HOSTS_FILE="/c/Windows/System32/drivers/etc/hosts"
+else
+    HOSTS_FILE="/etc/hosts"
+fi
+
+# Check if the script is running with sufficient privileges
+check_privileges() {
+    if [[ "$EUID" -ne 0 ]]; then
+        echo -e "${RED}This script must be run as root or with administrative privileges.${NC}"
+        exit 1
+    fi
+}
+
+# Add a new entry to the hosts file
+add_host_to_hosts_file() {
+    local host=$1
+
+    # Check if the host already exists
+    if grep -q "$host" "$HOSTS_FILE"; then
+        echo -e "${RED}Host $host already exists in the hosts file.${NC}"
+        return 1
+    fi
+
+    # Append the new host entry
+    echo "127.0.0.1 $host" >> "$HOSTS_FILE"
+    echo "::1 $host" >> "$HOSTS_FILE"
+    echo -e "${GREEN}Host $host added to the hosts file successfully.${NC}"
+    return 0
+}
+
+# Remove an entry from the hosts file
+remove_host_from_hosts_file() {
+    local host=$1
+
+    # Check if the host exists in the hosts file
+    if ! grep -q "$host" "$HOSTS_FILE"; then
+        echo -e "${RED}Host $host not found in the hosts file.${NC}"
+        return 1
+    fi
+
+    # Use sed to remove the line
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+        sed -i "/$host/d" "$HOSTS_FILE"
+    else
+        sed -i "/$host/d" "$HOSTS_FILE"
+    fi
+
+    echo -e "${GREEN}Host $host removed from the hosts file successfully.${NC}"
+    return 0
+}
+
 show_caddyfile_help() {
     echo -e "Usage: ${BOLD}$0 {add-host|remove-host|list-hosts} <host> [<root>${NC}]\n"
     echo -e "Commands:"
@@ -12,6 +65,32 @@ show_caddyfile_help() {
     echo -e "\nArguments:"
     echo -e "  ${YELLOW}<host>${NC}               The hostname to configure (e.g., example.localhost)."
     echo -e "  ${YELLOW}<root>${NC}               The root directory for the host (required for add-host command)."
+}
+
+# Parse active hosts from the Caddyfile
+list_active_hosts() {
+    grep -E '^[a-zA-Z0-9.-]+ {' "$CADDYFILE_PATH" | sed -E 's/ \{.*//'
+}
+
+# Check and add missing hosts to the hosts file
+ensure_hosts_in_hosts_file() {
+    local missing_hosts=()
+    local hosts=$(list_active_hosts)
+
+    for host in $hosts; do
+        if ! grep -q "$host" "$HOSTS_FILE"; then
+            echo "Adding missing host: $host to $HOSTS_FILE"
+            echo "127.0.0.1 $host" >> "$HOSTS_FILE"
+            echo "::1 $host" >> "$HOSTS_FILE"
+            missing_hosts+=("$host")
+        fi
+    done
+
+    if [ ${#missing_hosts[@]} -eq 0 ]; then
+        echo "All active hosts are already present in the hosts file."
+    else
+        echo "Added ${#missing_hosts[@]} missing hosts."
+    fi
 }
 
 list_hosts() {
@@ -40,6 +119,33 @@ list_hosts() {
     printf "${THEME}${BOLD}└────────────────────────────────┴──────────────────────────────────────────┘${NC}\n"
 }
 
+# Main function to handle host modifications
+execute_hosts_action() {
+    local action=$1
+    local host=$2
+
+    case $action in
+        add-host)
+            check_privileges
+            add_host_to_hosts_file "$host"
+            ;;
+        remove-host)
+            check_privileges
+            remove_host_from_hosts_file "$host"
+            ;;
+        list-hosts)
+            list_hosts
+            ;;
+        ensure-hosts)
+            check_privileges
+            ensure_hosts_in_hosts_file
+            ;;
+        *)
+            echo -e "${RED}Invalid action for hosts file: $action${NC}"
+            return 1
+            ;;
+    esac
+}
 
 execute_caddyfile() {
     local action=$1
@@ -64,12 +170,12 @@ execute_caddyfile() {
             cat <<EOF >> "$CADDYFILE_PATH"
 
 $host {
+    import global
     root  $root
-    file_server
-    php_server
 }
 EOF
             echo -e "${GREEN}Host $host added successfully.${NC}"
+            execute_hosts_action add-host "$host"
             make reload -C ${SRCS_DIR}
             return 0
             ;;
@@ -90,7 +196,7 @@ EOF
             fi
 
             echo -e "${GREEN}Host $host removed successfully.${NC}\n"
-
+            execute_hosts_action remove-host "$host"
             make reload -C ${SRCS_DIR}
 
             return 0
@@ -105,3 +211,47 @@ EOF
             ;;
     esac
 }
+
+trust_caddy_root_ca() {
+    # Define variables
+    CONTAINER_NAME="frankenphp_devner"
+    CERT_PATH="./caddy-root.crt"
+    CONTAINER_CERT_PATH="/data/caddy/pki/authorities/local/root.crt"
+
+    echo -e "\n${YELLOW}Extracting Root CA from Caddy container...${NC}"
+    
+    # Copy the Root CA certificate from the container to the host
+    docker cp "${CONTAINER_NAME}:${CONTAINER_CERT_PATH}" "${CERT_PATH}" 2>/dev/null
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error:${NC} Failed to copy certificate from the container."
+        exit 1
+    fi
+    
+    echo -e "${GREEN}Certificate successfully copied to ${CERT_PATH}.${NC}"
+
+    # Detect OS and install certificate
+    OS="$(uname -s)"
+    case "${OS}" in
+        Darwin) # macOS
+            echo -e "${YELLOW}Installing certificate on macOS...${NC}"
+            sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "${CERT_PATH}"
+            ;;
+        Linux) # Linux
+            echo -e "${YELLOW}Installing certificate on Linux...${NC}"
+            sudo cp "${CERT_PATH}" /usr/local/share/ca-certificates/caddy-root.crt
+            sudo update-ca-certificates
+            ;;
+        MINGW*|CYGWIN*|MSYS*|Windows_NT) # Windows
+            echo -e "${YELLOW}For Windows:${NC} Open 'Manage User Certificates' and import '${CERT_PATH}' into 'Trusted Root Certification Authorities'."
+            explorer.exe .
+            ;;
+        *)
+            echo -e "${RED}Unsupported operating system. Please install the certificate manually.${NC}"
+            exit 1
+            ;;
+    esac
+
+    echo -e "${GREEN}Root CA successfully trusted on your system.${NC}"
+}
+
