@@ -57,8 +57,10 @@ services:
       # For local development outside of the container
       - '5173:5173'
       - '3000:3000'
+      - '8081:8081' # Expo - React Native
     volumes:
       # mount your Node.js projects
+      - /var/run/docker.sock:/var/run/docker.sock
       - ~/.nuxtrc:/.nuxtrc
       - ./projects:/home/dev/apps/
       - /etc/localtime:/etc/localtime:ro

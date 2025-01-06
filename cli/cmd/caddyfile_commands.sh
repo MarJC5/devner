@@ -126,18 +126,15 @@ execute_hosts_action() {
 
     case $action in
         add-host)
-            check_privileges
             add_host_to_hosts_file "$host"
             ;;
         remove-host)
-            check_privileges
             remove_host_from_hosts_file "$host"
             ;;
         list-hosts)
             list_hosts
             ;;
         ensure-hosts)
-            check_privileges
             ensure_hosts_in_hosts_file
             ;;
         *)

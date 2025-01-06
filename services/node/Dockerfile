@@ -53,6 +53,12 @@ ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8  
 ENV LANGUAGE en_US:en
 
+# Install postgres & mariadb clients
+RUN apt-get update && \
+    apt-get install -y mariadb-client postgresql-client && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Create directories for certificates
 RUN mkdir -p /certs
 
