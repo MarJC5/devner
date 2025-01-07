@@ -33,9 +33,6 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install MailPit (SMTP testing tool)
-RUN curl -sL https://raw.githubusercontent.com/axllent/mailpit/develop/install.sh | bash
-
 # Install wp-cli
 RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
     chmod +x wp-cli.phar && \

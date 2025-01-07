@@ -178,6 +178,12 @@ execute_other_command() {
                     remove_alias
                     ;;
                 *)
+                    # Check missing or invalid argument
+                    if [ -z "$argument" ]; then
+                        echo -e "${RED}Missing argument for alias command${NC}. Please specify 'add' or 'remove'."
+                        exit 1
+                    fi
+
                     echo -e "${RED}Invalid argument for alias command${NC}: $argument"
                     exit 1
                     ;;
