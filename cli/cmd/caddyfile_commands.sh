@@ -29,9 +29,9 @@ add_host_to_hosts_file() {
     fi
 
     # Append the new host entry
-    echo "127.0.0.1 $host" >> "$HOSTS_FILE"
-    echo "::1 $host" >> "$HOSTS_FILE"
-    echo -e "${GREEN}Host $host added to the hosts file successfully.${NC}"
+    # echo "127.0.0.1 $host" >> "$HOSTS_FILE"
+    # echo "::1 $host" >> "$HOSTS_FILE"
+    # echo -e "${GREEN}Host $host added to the hosts file successfully.${NC}"
     return 0
 }
 
