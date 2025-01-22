@@ -169,6 +169,11 @@ execute_caddyfile() {
 $host {
     import global
     root  $root
+
+    # Add reverse proxy for Vite
+    handle /@vite/* {
+        reverse_proxy node_devner:5173
+    }
 }
 EOF
             echo -e "${GREEN}Host $host added successfully.${NC}"
