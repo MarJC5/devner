@@ -68,6 +68,11 @@ RUN curl -JLO https://dl.filippo.io/mkcert/latest?for=linux/amd64 && \
     chmod +x /usr/local/bin/mkcert && \
     mkcert -install
 
+# Install lsof
+RUN apt-get update && \
+    apt-get install -y lsof && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy your application source
 WORKDIR /home/dev/apps/

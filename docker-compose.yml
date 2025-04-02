@@ -32,7 +32,6 @@ services:
       - "443:443/udp" # HTTP/3
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /etc/localtime:/etc/localtime:ro
       - ./projects:/var/www/html/
       - ./services/frankenphp/Caddyfile:/etc/caddy/Caddyfile
       - ./services/frankenphp/config/php.ini:/usr/local/etc/php/php.ini
@@ -63,7 +62,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ~/.nuxtrc:/.nuxtrc
       - ./projects:/home/dev/apps/
-      - /etc/localtime:/etc/localtime:ro
 
   mysql:
     image: mysql:8.4
@@ -79,7 +77,6 @@ services:
       - ./services/mysql/scripts/check.sh:/check.sh
       - ./services/mysql/config/.my.cnf:/.my.cnf
       - mysql_data:/var/lib/mysql
-      - /etc/localtime:/etc/localtime:ro
     environment:
       MYSQL_USER: devner
       MYSQL_PASSWORD: devner
@@ -100,7 +97,6 @@ services:
       - ./services/postgres/scripts/check.sh:/check.sh
       - ./services/postgres/config/.pgpass:/.pgpass
       - postgres_data:/var/lib/postgresql/data
-      - /etc/localtime:/etc/localtime:ro
     environment:
       POSTGRES_USER: devner
       POSTGRES_PASSWORD: devner
