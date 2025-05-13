@@ -8,8 +8,6 @@ services:
     container_name: mailpit_devner
     tty: true
     restart: unless-stopped
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
     environment:
       TZ: "Europe/Zurich"
     ports:
@@ -118,8 +116,25 @@ services:
     extra_hosts:
       - "adminer.localhost:127.0.0.1"
 
+  redis:
+    image: redis:alpine
+    container_name: redis_devner
+    tty: true
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   mysql_data:
   postgres_data:
+  redis_data:
   caddy_data:
   caddy_config:
