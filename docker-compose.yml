@@ -31,7 +31,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./projects:/var/www/html/
-      - ./services/frankenphp/Caddyfile:/etc/caddy/Caddyfile
+      - ./services/frankenphp/Caddyfile:/etc/frankenphp/Caddyfile
       - ./services/frankenphp/config/php.ini:/usr/local/etc/php/php.ini
       - caddy_data:/data # Persist Caddy's data (certificates)
       - caddy_config:/config # Persist Caddy's configuration

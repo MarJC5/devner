@@ -13,6 +13,14 @@ adminer.localhost {
     reverse_proxy adminer_devner:8080
 }
 
+localhost:5173 {
+    reverse_proxy node_devner:5173
+}
+
+localhost:3000 {
+    reverse_proxy node_devner:3000
+}
+
 (global) {
     file_server
     php_server

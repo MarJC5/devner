@@ -70,5 +70,11 @@ RUN curl -sL https://raw.githubusercontent.com/axllent/mailpit/develop/install.s
 
 RUN export PATH="$PATH:$HOME/.composer/vendor/bin" >> ~/.bashrc
 
+# Install caddy
+RUN apt-get update && \
+    apt-get install -y caddy && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Set the working directory
 WORKDIR /var/www/html
