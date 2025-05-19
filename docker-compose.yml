@@ -107,8 +107,6 @@ services:
     restart: unless-stopped
     container_name: adminer_devner
     tty: true
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
     environment:
       ADMINER_PLUGINS: "tables-filter tinymce json-column dump-zip"
       ADMINER_DEFAULT_SERVER: mysql

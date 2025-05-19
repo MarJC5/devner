@@ -29,9 +29,9 @@ add_host_to_hosts_file() {
     fi
 
     # Append the new host entry
-    # echo "127.0.0.1 $host" >> "$HOSTS_FILE"
-    # echo "::1 $host" >> "$HOSTS_FILE"
-    # echo -e "${GREEN}Host $host added to the hosts file successfully.${NC}"
+    echo "127.0.0.1 $host" >> "$HOSTS_FILE"
+    echo "::1 $host" >> "$HOSTS_FILE"
+    echo -e "${GREEN}Host $host added to the hosts file successfully.${NC}"
     return 0
 }
 
@@ -69,27 +69,42 @@ show_caddyfile_help() {
 
 # Parse active hosts from the Caddyfile
 list_active_hosts() {
-    grep -E '^[a-zA-Z0-9.-]+ {' "$CADDYFILE_PATH" | sed -E 's/ \{.*//'
+    # Extract hosts that end with .localhost
+    grep -E '^[a-zA-Z0-9.-]+\.localhost {' "$CADDYFILE_PATH" | sed -E 's/ \{.*//'
 }
 
 # Check and add missing hosts to the hosts file
 ensure_hosts_in_hosts_file() {
     local missing_hosts=()
     local hosts=$(list_active_hosts)
+    local added_count=0
 
+    # Check if we have root privileges
+    if [[ "$EUID" -ne 0 ]]; then
+        echo -e "${RED}This operation requires root privileges.${NC}"
+        echo -e "Please run one of these commands:"
+        echo -e "  ${YELLOW}sudo $0 localhost ensure-hosts${NC}"
+        echo -e "  ${YELLOW}sudo $(realpath $0) localhost ensure-hosts${NC}"
+        return 1
+    fi
+
+    echo -e "\n${YELLOW}Checking hosts in Caddyfile...${NC}"
+    
     for host in $hosts; do
         if ! grep -q "$host" "$HOSTS_FILE"; then
-            echo "Adding missing host: $host to $HOSTS_FILE"
+            echo -e "${YELLOW}Adding missing host:${NC} $host"
             echo "127.0.0.1 $host" >> "$HOSTS_FILE"
             echo "::1 $host" >> "$HOSTS_FILE"
             missing_hosts+=("$host")
+            added_count=$((added_count + 1))
         fi
     done
 
-    if [ ${#missing_hosts[@]} -eq 0 ]; then
-        echo "All active hosts are already present in the hosts file."
+    if [ $added_count -eq 0 ]; then
+        echo -e "${GREEN}All hosts from Caddyfile are already present in the hosts file.${NC}"
     else
-        echo "Added ${#missing_hosts[@]} missing hosts."
+        echo -e "\n${GREEN}Successfully added $added_count hosts to $HOSTS_FILE:${NC}"
+        printf '%s\n' "${missing_hosts[@]}"
     fi
 }
 

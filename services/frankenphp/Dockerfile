@@ -12,6 +12,7 @@ RUN install-php-extensions \
     pdo \
     pdo_mysql \
     pdo_pgsql \
+    redis \
     mysqli \
     pgsql \
     gd \

@@ -36,12 +36,14 @@ show_help() {
     echo -e "${YELLOW}- alias${NC} - Add the devner alias to .bashrc or .zshrc."
     echo -e "${YELLOW}- code${NC} - Open a project in VSCode."
     echo -e "${YELLOW}- wp${NC} - Run wp-cli commands."
+    echo -e "${YELLOW}- install${NC} - Install devner to system path (requires sudo).\n"
 
 
     echo -e "${BOLD}Caddyfile Management Commands:${NC}"
     echo -e "${YELLOW}- add-host <host> <root>${NC} - Add a new host to the Caddyfile."
     echo -e "${YELLOW}- remove-host <host>${NC} - Remove an existing host from the Caddyfile."
-    echo -e "${YELLOW}- list-hosts${NC} - List all hosts in the Caddyfile.\n"
+    echo -e "${YELLOW}- list-hosts${NC} - List all hosts in the Caddyfile."
+    echo -e "${YELLOW}- ensure-hosts${NC} - Ensure all hosts from Caddyfile are in the hosts file.\n"
 }
 
 

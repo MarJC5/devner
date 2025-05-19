@@ -44,6 +44,7 @@ show_menu() {
         "22) add-host"
         "23) remove-host"
         "24) list-hosts"
+        "25) ensure-hosts"
     )
     
     help_and_quit_commands=(
@@ -112,7 +113,7 @@ handle_menu_selection() {
         STATUS=0
     fi
 
-    read -p "Enter your choice [1-24] or command name (q to quit): " choice
+    read -p "Enter your choice [1-25] or command name (q to quit): " choice
 
     # Map numbers to command names
     case $choice in
@@ -199,6 +200,11 @@ handle_menu_selection() {
             read -p "Press [Enter] key to continue..."
             ;;
         24 | "list-hosts") clear; execute_caddyfile list-hosts; read -p "Press [Enter] key to continue..." ;;
+        25 | "ensure-hosts")
+            clear
+            execute_caddyfile ensure-hosts
+            read -p "Press [Enter] key to continue..."
+            ;;
         c | "credit") clear; handle_credit; echo ; read -p "Press [Enter] key to continue..." ;;
         h | "help") clear; handle_help_selection ;;
         q | "quit") clear; exit 0 ;;

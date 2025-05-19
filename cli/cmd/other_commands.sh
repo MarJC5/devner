@@ -106,8 +106,6 @@ open_code() {
     done
 }
 
-
-
 add_alias() {
     local alias_command="alias devner='bash ${SRCS_DIR}/devner.sh'"
 
@@ -159,6 +157,43 @@ remove_alias() {
     remove_alias_from_file "$HOME/.zshrc"
 }
 
+install_to_system() {
+    local target_dir="/usr/local/bin"
+    local script_path="$(realpath "$0")"
+    local script_name="devner"
+
+    # Check if we have root privileges
+    if [[ "$EUID" -ne 0 ]]; then
+        echo -e "${RED}This operation requires root privileges.${NC}"
+        echo -e "Please run: ${YELLOW}sudo ${script_path} install${NC}"
+        return 1
+    fi
+
+    # Check if the script is already installed
+    if [ -f "${target_dir}/${script_name}" ]; then
+        echo -e "${YELLOW}Devner is already installed at ${target_dir}/${script_name}${NC}"
+        read -p "Do you want to reinstall it? (y/n) " reinstall
+        if [ "$reinstall" != "y" ]; then
+            return 0
+        fi
+    fi
+
+    # Create a wrapper script
+    cat > "${target_dir}/${script_name}" << EOF
+#!/bin/bash
+"${script_path}" "\$@"
+EOF
+
+    # Make it executable
+    chmod +x "${target_dir}/${script_name}"
+
+    echo -e "${GREEN}Devner has been installed to ${target_dir}/${script_name}${NC}"
+    echo -e "You can now run it from anywhere using: ${YELLOW}devner${NC}"
+    echo -e "Example commands:"
+    echo -e "  ${YELLOW}devner up${NC} - Start the development environment"
+    echo -e "  ${YELLOW}sudo devner localhost ensure-hosts${NC} - Ensure all hosts are in your hosts file"
+}
+
 execute_other_command() {
     local command=$1
     local argument=$2
@@ -191,6 +226,9 @@ execute_other_command() {
             ;;
         path)
             add_to_path
+            ;;
+        install)
+            install_to_system
             ;;
     esac
 }

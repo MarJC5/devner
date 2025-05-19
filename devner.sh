@@ -96,6 +96,9 @@ else
         trust-ca)
             trust_caddy_root_ca
             ;;
+        install)
+            execute_other_command install
+            ;;
         open)
             make dev -C ${SRCS_DIR}
             ;;
