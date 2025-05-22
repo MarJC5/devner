@@ -47,7 +47,7 @@ delete:
 
 node:
 	@echo "${GREEN}Entering node container...${RESET}"
-	@${DOCKER} exec -w /home/dev/apps$(CURRENT_DIR) node bash
+	@${DOCKER} exec -w /home/dev/apps$(CURRENT_DIR) frankenphp bash
 
 frankenphp:
 	@echo "${GREEN}Entering frankenphp container...${RESET}"

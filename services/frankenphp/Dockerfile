@@ -6,6 +6,24 @@ RUN echo $TZ > /etc/timezone && \
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
     dpkg-reconfigure -f noninteractive tzdata
 
+# Install Node.js and NVM
+ENV NVM_DIR /usr/local/nvm
+RUN mkdir -p $NVM_DIR && \
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+
+ENV NODE_VERSION_18 18
+ENV NODE_VERSION_20 20
+ENV NODE_VERSION_22 22
+
+# Install Node.js versions
+RUN . "$NVM_DIR/nvm.sh" && \
+    nvm install $NODE_VERSION_18 && \
+    nvm install $NODE_VERSION_20 && \
+    nvm install $NODE_VERSION_22 && \
+    nvm install --lts && \
+    nvm alias default $NODE_VERSION_22 && \
+    nvm use $NODE_VERSION_22 && \
+    npm install -g yarn
 
 # Install Postfix and PHP extensions
 RUN install-php-extensions \
@@ -21,7 +39,8 @@ RUN install-php-extensions \
     opcache \
     pcntl \
     exif
-
+    
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y \
     mariadb-client \
@@ -30,7 +49,10 @@ RUN apt-get update && \
     mailutils \
     libnss3-tools \
     git \
-    openssh-client && \
+    openssh-client \
+    build-essential \
+    lsof \
+    caddy && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -68,13 +90,17 @@ ENV LANGUAGE en_US:en
 # Install MailPit (SMTP testing tool)
 RUN curl -sL https://raw.githubusercontent.com/axllent/mailpit/develop/install.sh | bash
 
-RUN export PATH="$PATH:$HOME/.composer/vendor/bin" >> ~/.bashrc
+# Install mkcert and generate certificates
+RUN curl -JLO https://dl.filippo.io/mkcert/latest?for=linux/amd64 && \
+    mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert && \
+    chmod +x /usr/local/bin/mkcert && \
+    mkcert -install
 
-# Install caddy
-RUN apt-get update && \
-    apt-get install -y caddy && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Create directories for certificates
+RUN mkdir -p /certs
 
 # Set the working directory
 WORKDIR /var/www/html
+
+# Add NVM to PATH
+ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION_22/bin:$PATH

@@ -28,11 +28,15 @@ services:
       - "80:80" # HTTP
       - "443:443" # HTTPS
       - "443:443/udp" # HTTP/3
+      - '5173:5173' # Vite
+      - '3000:3000' # Node.js
+      - '8081:8081' # Expo - React Native
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./projects:/var/www/html/
       - ./services/frankenphp/Caddyfile:/etc/frankenphp/Caddyfile
       - ./services/frankenphp/config/php.ini:/usr/local/etc/php/php.ini
+      - ~/.nuxtrc:/.nuxtrc
       - caddy_data:/data # Persist Caddy's data (certificates)
       - caddy_config:/config # Persist Caddy's configuration
     tty: true
@@ -40,26 +44,6 @@ services:
       - mysql
       - postgres
       - mailpit
-
-  node:
-    build:
-      context: ./services/node
-      dockerfile: Dockerfile
-    container_name: node_devner
-    tty: true
-    restart: unless-stopped
-    environment:
-      TZ: "Europe/Zurich"
-    ports:
-      # For local development outside of the container
-      - '5173:5173'
-      - '3000:3000'
-      - '8081:8081' # Expo - React Native
-    volumes:
-      # mount your Node.js projects
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ~/.nuxtrc:/.nuxtrc
-      - ./projects:/home/dev/apps/
 
   mysql:
     image: mysql:8.4
