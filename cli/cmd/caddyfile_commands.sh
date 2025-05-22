@@ -203,8 +203,19 @@ EOF
                 return 1
             fi
 
-            # Use sed to delete the lines between the host declaration and the next blank line
-            sed -i "" "/$host {/,/^$/d" "$CADDYFILE_PATH"
+            # Create a temporary file
+            local temp_file=$(mktemp)
+            
+            # Use awk to remove the block
+            awk -v host="$host" '
+                BEGIN { skip = 0; }
+                $0 ~ "^" host " {" { skip = 1; next; }
+                skip && /^}/ { skip = 0; next; }
+                !skip { print; }
+            ' "$CADDYFILE_PATH" > "$temp_file"
+            
+            # Replace the original file with the temporary file
+            mv "$temp_file" "$CADDYFILE_PATH"
             
             # Check if the host was removed successfully
             if grep -q "$host" "$CADDYFILE_PATH"; then
