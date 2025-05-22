@@ -48,7 +48,7 @@ else
         wp)
             execute_wp_cli $@
             ;;
-        node|frankenphp)
+        node|frankenphp|run)
             execute_quick_access_command $1
             ;;
         ps|alias|code)

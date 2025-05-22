@@ -45,6 +45,10 @@ delete:
 	@echo "${RED}Deleting containers...${RESET}"
 	@${DOCKER} down -v --remove-orphans
 
+run:
+	@echo "${GREEN}Running command...${RESET}"
+	@${DOCKER} exec -w /var/www/html$(CURRENT_DIR) frankenphp bash
+
 node:
 	@echo "${GREEN}Entering node container...${RESET}"
 	@${DOCKER} exec -w /var/www/html$(CURRENT_DIR) frankenphp bash

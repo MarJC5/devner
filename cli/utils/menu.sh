@@ -48,6 +48,7 @@ show_menu() {
     )
     
     help_and_quit_commands=(
+        "26) run"
         "c) credit"
         "h) help"
         "q) quit"
@@ -205,6 +206,8 @@ handle_menu_selection() {
             execute_caddyfile ensure-hosts
             read -p "Press [Enter] key to continue..."
             ;;
+        26 | "run") clear; execute_quick_access_command run ;;
+
         c | "credit") clear; handle_credit; echo ; read -p "Press [Enter] key to continue..." ;;
         h | "help") clear; handle_help_selection ;;
         q | "quit") clear; exit 0 ;;

@@ -32,6 +32,7 @@ show_help() {
     echo -e "${YELLOW}- remove <project name> <mysql/postgres>${NC} - Delete a project and its database.\n"
     
     echo -e "${BOLD}Other Commands:${NC}"
+    echo -e "${YELLOW}- run${NC} - Run a command in the main container."
     echo -e "${YELLOW}- ps${NC} - Check if the devner container is running."
     echo -e "${YELLOW}- alias${NC} - Add the devner alias to .bashrc or .zshrc."
     echo -e "${YELLOW}- code${NC} - Open a project in VSCode."
