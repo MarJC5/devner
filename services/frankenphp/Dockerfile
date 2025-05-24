@@ -25,6 +25,13 @@ RUN . "$NVM_DIR/nvm.sh" && \
     nvm use $NODE_VERSION_22 && \
     npm install -g yarn
 
+# Set the timezone
+ENV TZ=UTC
+RUN echo $TZ > /etc/timezone && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+    dpkg-reconfigure -f noninteractive tzdata
+
+
 # Install Postfix and PHP extensions
 RUN install-php-extensions \
     pdo \
@@ -39,8 +46,7 @@ RUN install-php-extensions \
     opcache \
     pcntl \
     exif
-    
-# Install system dependencies
+
 RUN apt-get update && \
     apt-get install -y \
     mariadb-client \
@@ -49,10 +55,7 @@ RUN apt-get update && \
     mailutils \
     libnss3-tools \
     git \
-    openssh-client \
-    build-essential \
-    lsof \
-    caddy && \
+    openssh-client && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -76,7 +79,7 @@ RUN sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/inst
 # Install Locale (for utf-8 support)
 RUN apt-get update && \
     apt-get install -y \
-        locales && \
+    locales && \
     rm -r /var/lib/apt/lists/*
 
 RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
@@ -90,17 +93,7 @@ ENV LANGUAGE en_US:en
 # Install MailPit (SMTP testing tool)
 RUN curl -sL https://raw.githubusercontent.com/axllent/mailpit/develop/install.sh | bash
 
-# Install mkcert and generate certificates
-RUN curl -JLO https://dl.filippo.io/mkcert/latest?for=linux/amd64 && \
-    mv mkcert-v*-linux-amd64 /usr/local/bin/mkcert && \
-    chmod +x /usr/local/bin/mkcert && \
-    mkcert -install
-
-# Create directories for certificates
-RUN mkdir -p /certs
+RUN export PATH="$PATH:$HOME/.composer/vendor/bin" >> ~/.bashrc
 
 # Set the working directory
 WORKDIR /var/www/html
-
-# Add NVM to PATH
-ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION_22/bin:$PATH
