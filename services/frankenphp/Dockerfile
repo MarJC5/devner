@@ -23,8 +23,9 @@ RUN . "$NVM_DIR/nvm.sh" && \
     nvm install --lts && \
     nvm alias default $NODE_VERSION_22 && \
     nvm use $NODE_VERSION_22 && \
-    npm install -g yarn
-
+    npm install -g yarn && \
+    npm install -g pnpm
+    
 # Set the timezone
 ENV TZ=UTC
 RUN echo $TZ > /etc/timezone && \
@@ -45,7 +46,8 @@ RUN install-php-extensions \
     zip \
     opcache \
     pcntl \
-    exif
+    exif \
+    bcmath
 
 RUN apt-get update && \
     apt-get install -y \
