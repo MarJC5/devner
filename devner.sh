@@ -51,7 +51,7 @@ else
         node|frankenphp|run)
             execute_quick_access_command $1
             ;;
-        ps|alias|code)
+        ps|alias|code|zed)
             execute_other_command $1 $2
             ;;
         postgres|mysql)

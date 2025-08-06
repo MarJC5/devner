@@ -106,6 +106,79 @@ open_code() {
     done
 }
 
+open_zed() {
+    # Check if $1 is not empty to open a specific project or show a list of projects
+    if [ -n "$1" ]; then
+        local project_name=$1
+        local project_path="${PROJECTS_DIR}/${project_name}"
+        if [ -d "$project_path" ]; then
+            echo -e "${GREEN}Opening ${project_name} in Zed...${NC}"
+            zed "${project_path}"
+        else
+            echo -e "${RED}Project ${project_name} not found.${NC}"
+        fi
+        return
+    fi
+
+    echo -e "\n${UNDERLINE}${BOLD}Available Projects:${NC}\n"
+    projects=($(ls -d ${PROJECTS_DIR}/*/))
+    local half=$(((${#projects[@]} + 1) / 2))
+
+    # Print header
+    printf "${THEME}${BOLD}┌─────┬─────────────────────────┬─────┬─────────────────────────┐${NC}\n"
+    printf "${THEME}${BOLD}│ %-3s │ %-23s │ %-3s │ %-23s │${NC}\n" "No." "Project" "No." "Project"
+    printf "${THEME}${BOLD}├─────┼─────────────────────────┼─────┼─────────────────────────┤${NC}\n"
+
+    # Print projects in two columns
+    for ((i=0; i<half; i++)); do
+        local index1=$((i+1))
+        local index2=$((i+1+half))
+        local project_name1=$(basename "${projects[$i]}")
+        local project_name2=""
+
+        if [ $index2 -le ${#projects[@]} ]; then
+            project_name2=$(basename "${projects[$((i+half))]}")
+            printf "${THEME}${BOLD}│${NC} %-3s ${THEME}${BOLD}│${NC} %-23s ${THEME}${BOLD}│${NC} %-3s ${THEME}${BOLD}│${NC} %-23s ${THEME}${BOLD}│${NC}\n" $index1 "$(wrap_text "$project_name1" 23)" $index2 "$(wrap_text "$project_name2" 23)"
+        else
+            printf "${THEME}${BOLD}│${NC} %-3s ${THEME}${BOLD}│${NC} %-23s ${THEME}${BOLD}│${NC} %-3s ${THEME}${BOLD}│${NC} %-23s ${THEME}${BOLD}│${NC}\n" $index1 "$(wrap_text "$project_name1" 23)" "" ""
+        fi
+    done
+
+    # Print footer
+    printf "${THEME}${BOLD}└─────┴─────────────────────────┴─────┴─────────────────────────┘${NC}\n"
+
+    while true; do
+        echo -e "\nEnter the number of the project you want to open (q to quit):"
+        read -p "#? " project_choice
+
+        # q to quit
+        if [ "$project_choice" = "q" ]; then
+            return 1
+        fi
+
+        if ! [[ "$project_choice" =~ ^[0-9]+$ ]]; then
+            echo -e "\n${RED}Invalid selection. Please enter a number from the list or 'q' to quit.${NC}"
+        else
+            local project_index=$((project_choice-1))
+            if [ "$project_index" -ge 0 ] && [ "$project_index" -lt "${#projects[@]}" ]; then
+                local project_path="${projects[$project_index]}"
+                project_path="${project_path%/}"
+                local project_name=$(basename "${project_path}")
+                echo -e "${GREEN}Opening ${project_name} in Zed...${NC}"
+
+                if ! docker ps | grep -q "devner"; then
+                    make up -C ${SRCS_DIR}
+                fi
+
+                zed "${project_path}"
+                break
+            else
+                echo -e "${RED}Invalid selection. Please enter a number from the list or 'q' to quit.${NC}"
+            fi
+        fi
+    done
+}
+
 add_alias() {
     local alias_command="alias devner='bash ${SRCS_DIR}/devner.sh'"
 
@@ -203,6 +276,9 @@ execute_other_command() {
             ;;
         code)
             open_code $argument
+            ;;
+        zed)
+            open_zed $argument
             ;;
         alias)
             case $argument in

@@ -31,6 +31,7 @@ services:
       - '5173:5173' # Vite
       - '3000:3000' # Node.js
       - '8081:8081' # Expo - React Native
+      - '4321:4321' # astro
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./projects:/var/www/html/
