@@ -67,7 +67,7 @@ services:
       TZ: "Europe/Zurich"
 
   postgres:
-    image: postgres:14
+    image: postgis/postgis:14-3.5
     restart: unless-stopped
     tty: true
     container_name: postgres_devner

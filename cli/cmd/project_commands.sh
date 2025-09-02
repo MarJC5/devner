@@ -171,9 +171,27 @@ execute_project_command() {
     fi
 
     if [ "$command" = "remove" ]; then
-        if [ $# -lt 2 ]; then
+        # Since we're calling with: execute_project_command remove unused <project_name> <db_type>
+        # The project_name is actually in $3 and db_type in $4 for remove command
+        if [ "$2" = "unused" ]; then
+            project_name=$3
+            project_db_type=$4
+        fi
+        
+        if [ -z "$project_name" ]; then
             echo -e "${RED}Please provide the project name.${NC}"
             return 1
+        fi
+        
+        if [ -z "$project_db_type" ]; then
+            echo -e "${RED}Please provide the database type (mysql/postgres).${NC}"
+            return 1
+        fi
+        
+        # Regenerate host_name for remove command
+        host_name="${project_name}"
+        if [[ ! $host_name =~ \.localhost$ ]]; then
+            host_name="${host_name}.localhost"
         fi
 
         # Check if the project exists

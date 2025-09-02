@@ -45,6 +45,19 @@ else
         up|down|stop|rebuild|delete|nocache|reload)
             execute_general_command $1
             ;;
+        
+        remove)
+            # Handle: devner remove <project> <db_type>
+            if [ -z "$2" ]; then
+                echo -e "${RED}Please provide the project name.${NC}"
+                exit 1
+            fi
+            if [ -z "$3" ]; then
+                echo -e "${RED}Please provide the database type (mysql/postgres).${NC}"
+                exit 1
+            fi
+            execute_project_command remove unused $2 $3
+            ;;
         wp)
             execute_wp_cli $@
             ;;

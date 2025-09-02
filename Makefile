@@ -97,6 +97,10 @@ check-postgres:
 	@echo "${GREEN}Checking postgres database...${RESET}"
 	@${DOCKER} exec postgres bash -c "./check.sh ${database_name} ${database_user}"
 
+enable-postgis:
+	@echo "${GREEN}Enabling PostGIS extension...${RESET}"
+	@${DOCKER} exec postgres bash -c "psql -U devner -d ${database_name} -c 'CREATE EXTENSION IF NOT EXISTS postgis;'"
+
 new-wp:
 	@echo "${GREEN}Creating new wordpress project...${RESET}"
 	@$(DOCKER) exec frankenphp bash -c "wp core download --path=${project_name} --locale=fr_FR --allow-root"
