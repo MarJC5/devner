@@ -57,7 +57,9 @@ RUN apt-get update && \
     mailutils \
     libnss3-tools \
     git \
-    openssh-client && \
+    openssh-client \
+    zip \
+    unzip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
