@@ -42,17 +42,23 @@ func registerCommands(root *cobra.Command) {
 
 func newNewCmd() *cobra.Command {
 	var dbEngine string
+	var template string
 	var wpInstall bool
 	var wpTitle, wpAdmin, wpPass, wpEmail string
 
 	cmd := &cobra.Command{
 		Use:   "new <type> <name>",
-		Short: "Create a new project (wordpress|laravel|node|nextjs|astro)",
+		Short: "Create a new project (wordpress|laravel|node|nextjs|nuxt|astro|sveltekit|vite)",
 		Long: `Creates a new project with one command:
-  - scaffold (composer create-project, wp core download, pnpm create, ...)
+  - scaffold (composer, wp, pnpm create next/nuxt/astro/svelte/vite, ...)
   - optional database + user (--db=mysql|postgres)
   - framework wiring (.env for Laravel, wp-config.php for WordPress)
-  - Caddy site + HTTPS
+  - port allocation + Caddy reverse_proxy + HTTPS for Node-like projects
+
+Templates (for --template):
+  - vite:       react-ts (default) | vue-ts | svelte-ts | solid-ts | preact-ts | qwik-ts | lit-ts | vanilla-ts
+  - astro:      minimal (default) | basics | blog | portfolio | starlight
+  - sveltekit:  skeleton (default) | minimal | demo
 
 For WordPress, pass --wp-install to run 'wp core install' too.`,
 		Args: cobra.ExactArgs(2),
@@ -81,6 +87,7 @@ For WordPress, pass --wp-install to run 'wp core install' too.`,
 				Name:       name,
 				Type:       typ,
 				DBEngine:   dbEngine,
+				Template:   template,
 				WPInstall:  wpInstall,
 				WPTitle:    wpTitle,
 				WPAdmin:    wpAdmin,
@@ -111,6 +118,7 @@ For WordPress, pass --wp-install to run 'wp core install' too.`,
 		},
 	}
 	cmd.Flags().StringVar(&dbEngine, "db", "", "database engine: mysql | postgres")
+	cmd.Flags().StringVar(&template, "template", "", "scaffold template (Vite / Astro / SvelteKit only)")
 	cmd.Flags().BoolVar(&wpInstall, "wp-install", false, "run wp core install (WordPress only)")
 	cmd.Flags().StringVar(&wpTitle, "wp-title", "", "WordPress site title (default: project name)")
 	cmd.Flags().StringVar(&wpAdmin, "wp-admin", "", "WordPress admin username (default: admin)")

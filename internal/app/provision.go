@@ -19,7 +19,10 @@ type CreateProjectRequest struct {
 	Name       string
 	Type       project.Type
 	DBEngine   string // "" | "mysql" | "postgres"
-	WPInstall  bool   // only meaningful when Type == WordPress
+	// Template is passed through to the scaffolder for types that accept
+	// one (Vite, Astro, SvelteKit). Empty string → scaffolder default.
+	Template   string
+	WPInstall  bool // only meaningful when Type == WordPress
 	WPTitle    string
 	WPAdmin    string
 	WPPassword string
@@ -40,7 +43,9 @@ func (d *Deps) CreateProject(ctx context.Context, req CreateProjectRequest) (*Cr
 		return nil, err
 	}
 
-	if err := d.Project.Scaffold(ctx, req.Type, req.Name); err != nil {
+	if err := d.Project.Scaffold(ctx, req.Type, req.Name, project.ScaffoldOptions{
+		Template: req.Template,
+	}); err != nil {
 		return nil, fmt.Errorf("scaffold: %w", err)
 	}
 
@@ -142,7 +147,7 @@ func (d *Deps) ApplyCaddy(ctx context.Context) error {
 // rule in one place.
 func isNodeLike(t project.Type) bool {
 	switch t {
-	case project.Node, project.NextJS, project.Astro, project.Vite:
+	case project.Node, project.NextJS, project.Nuxt, project.Astro, project.SvelteKit, project.Vite:
 		return true
 	}
 	return false

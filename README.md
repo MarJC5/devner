@@ -81,7 +81,9 @@ devner restart [svc]   # restart stack / service
 devner rebuild         # force rebuild images
 devner delete --force  # destroy stack + volumes (DESTRUCTIVE)
 
-devner new <type> <name> [--db=mysql|postgres]     # types: wordpress|laravel|node|nextjs|astro|vite
+devner new <type> <name> [--db=mysql|postgres] [--template=...]
+# types: wordpress | laravel | node | nextjs | nuxt | astro | sveltekit | vite
+# --template covers Vue / Svelte / Solid / Qwik / Preact / Lit / vanilla via Vite
 devner remove <name>
 devner list
 
@@ -166,7 +168,21 @@ kind        = "openai_compat"
 
 Infomaniak v2 endpoint: `POST /2/ai/{product_id}/openai/v1/chat/completions` — see [docs](https://developer.infomaniak.com/docs/api/post/2/ai/%7Bproduct_id%7D/openai/v1/chat/completions).
 
-## Node / Next / Astro / Vite projects
+## Node / Next / Nuxt / Astro / SvelteKit / Vite projects
+
+**Framework coverage:**
+
+| Type | Scaffold | Dev command | Notes |
+|---|---|---|---|
+| `nextjs` | `pnpm create next-app` | `pnpm dev` (PORT env) | App Router + TS + Tailwind by default |
+| `nuxt` | `pnpm dlx nuxi init` | `pnpm dev --port N` | |
+| `astro` | `pnpm create astro` | `pnpm dev --port N` | `--template minimal\|basics\|blog\|portfolio\|starlight` |
+| `sveltekit` | `pnpm create svelte` | `pnpm dev --port N` | `--template skeleton\|minimal\|demo` |
+| `vite` | `pnpm create vite` | `pnpm dev --port N` | `--template react-ts\|vue-ts\|svelte-ts\|solid-ts\|preact-ts\|qwik-ts\|lit-ts\|vanilla-ts` |
+| `node` | `npm init -y` | `npm run start` | User controls the server code |
+
+For Vue / Svelte / Solid / Qwik / Preact / Lit / vanilla-JS, use `devner new vite myapp --template <tpl>-ts` — no framework-specific devner type needed.
+
 
 PHP projects (WordPress, Laravel) serve directly through FrankenPHP's PHP handler. Node-like projects use a different path:
 

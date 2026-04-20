@@ -62,14 +62,15 @@ func (t *ListProjects) Execute(ctx context.Context, _ json.RawMessage) (Result, 
 type CreateProject struct{ D *app.Deps }
 
 type createProjectArgs struct {
-	Name          string `json:"name"`
-	Type          string `json:"type"`
-	DB            string `json:"db,omitempty"`
-	WPInstall     bool   `json:"wp_install,omitempty"`
-	WPSiteTitle   string `json:"wp_title,omitempty"`
-	WPAdminUser   string `json:"wp_admin,omitempty"`
-	WPAdminPass   string `json:"wp_password,omitempty"`
-	WPAdminEmail  string `json:"wp_email,omitempty"`
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	DB           string `json:"db,omitempty"`
+	Template     string `json:"template,omitempty"`
+	WPInstall    bool   `json:"wp_install,omitempty"`
+	WPSiteTitle  string `json:"wp_title,omitempty"`
+	WPAdminUser  string `json:"wp_admin,omitempty"`
+	WPAdminPass  string `json:"wp_password,omitempty"`
+	WPAdminEmail string `json:"wp_email,omitempty"`
 }
 
 func (t *CreateProject) Name() string { return "create_project" }
@@ -82,8 +83,9 @@ func (t *CreateProject) Schema() json.RawMessage {
   "type":"object",
   "properties":{
     "name":{"type":"string","description":"Project name. Lowercase letters, digits, hyphens. Must start with a letter."},
-    "type":{"type":"string","enum":["wordpress","laravel","node","nextjs","astro","vite"]},
+    "type":{"type":"string","enum":["wordpress","laravel","node","nextjs","nuxt","astro","sveltekit","vite"]},
     "db":{"type":"string","enum":["mysql","postgres",""],"description":"Optional database engine."},
+    "template":{"type":"string","description":"Scaffold template. Vite: react-ts (default) | vue-ts | svelte-ts | solid-ts | preact-ts | qwik-ts | lit-ts | vanilla-ts. Astro: minimal (default) | basics | blog | portfolio | starlight. SvelteKit: skeleton (default) | minimal | demo. Ignored by other types."},
     "wp_install":{"type":"boolean","description":"WordPress only: run 'wp core install' after setup so the site is immediately usable."},
     "wp_title":{"type":"string"},
     "wp_admin":{"type":"string"},
@@ -108,6 +110,7 @@ func (t *CreateProject) Execute(ctx context.Context, raw json.RawMessage) (Resul
 		Name:       a.Name,
 		Type:       typ,
 		DBEngine:   a.DB,
+		Template:   a.Template,
 		WPInstall:  a.WPInstall,
 		WPTitle:    a.WPSiteTitle,
 		WPAdmin:    a.WPAdminUser,

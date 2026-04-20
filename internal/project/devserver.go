@@ -49,12 +49,17 @@ type Status struct {
 func DefaultCommand(t Type, port int) string {
 	switch t {
 	case NextJS:
-		return "pnpm dev" // PORT env wins
-	case Astro, Vite:
+		return "pnpm dev" // PORT env wins for Next.js
+	case Nuxt:
+		// Nuxi's dev respects the --port flag; PORT env also works but
+		// being explicit prevents surprises when npm scripts override.
+		return fmt.Sprintf("pnpm dev --port %d", port)
+	case Astro, Vite, SvelteKit:
 		// pnpm forwards unrecognised flags to the underlying script;
-		// `pnpm dev --port N` becomes `vite --port N` (or `astro dev
-		// --port N`). Do NOT add `--` before the flags — pnpm keeps
-		// `--` as a literal arg with Vite, breaking the parse.
+		// `pnpm dev --port N` becomes `vite --port N` / `astro dev
+		// --port N` / `vite --port N` (SvelteKit dev = vite). Do NOT
+		// prefix `--` — pnpm keeps it literally, which breaks Vite's
+		// argument parsing.
 		return fmt.Sprintf("pnpm dev --port %d", port)
 	case Node:
 		return "npm run start"
