@@ -20,6 +20,7 @@ func BuildDefault(d *app.Deps) *Registry {
 		&NPM{D: d},
 		&WPCli{D: d},
 		&Artisan{D: d},
+		&OpenInEditor{D: d},
 		&ExecInProject{D: d},
 	)
 }

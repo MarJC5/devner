@@ -30,6 +30,10 @@ func registerCommands(root *cobra.Command) {
 		newAgentCmd(),
 		newModelsCmd(),
 		newShellCmd(),
+		newOpenCmd(),
+		newCodeCmd(),
+		newZedCmd(),
+		newCursorCmd(),
 	)
 }
 
