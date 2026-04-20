@@ -1,36 +1,37 @@
-# Devner v2
+# Devner
 
 Local dev environment orchestrator for WordPress, Laravel, Node, Next.js and Astro projects.
 
-- Single cross-platform Go binary (macOS, Linux, Windows) — no bash, no Makefile
+- Single cross-platform Go binary (macOS, Linux, Windows) — no bash, no Makefile for users
 - TUI (Bubble Tea) + scripting CLI (Cobra)
 - Built-in AI agent: ask in natural language, it calls tools (create projects, databases, hosts, logs, exec)
 - Multi-provider LLM: **Infomaniak AI Tools** (open-source models), Anthropic, local Ollama
-- Same Docker stack as v1: FrankenPHP (PHP+Caddy+Node), MySQL 8.4, PostgreSQL + PostGIS, Redis, Mailpit, Adminer
+- Docker stack: FrankenPHP (PHP+Caddy+Node), MySQL 8.4, PostgreSQL + PostGIS, Redis, Mailpit, Adminer
 
 ## Install
 
 **macOS / Linux**
 ```bash
 # From release binary (when published)
-curl -L https://github.com/devner/devner/releases/latest/download/devner_darwin_arm64.tar.gz | tar -xz
+curl -L https://github.com/MarJC5/devner/releases/latest/download/devner_darwin_arm64.tar.gz | tar -xz
 sudo mv devner /usr/local/bin/
 
 # Or build from source
-git clone https://github.com/devner/devner.git
-cd devner/devner-go
-go build -o /usr/local/bin/devner ./cmd/devner
+git clone -b go https://github.com/MarJC5/devner.git
+cd devner
+make install             # builds and installs to /usr/local/bin
 ```
 
 **Windows** (PowerShell)
 ```powershell
-# Or download the .zip from Releases and extract devner.exe into PATH.
-iwr -useb https://github.com/devner/devner/releases/latest/download/devner_windows_amd64.zip -o devner.zip
+# Download the .zip from Releases and extract devner.exe into PATH.
+iwr -useb https://github.com/MarJC5/devner/releases/latest/download/devner_windows_amd64.zip -o devner.zip
 Expand-Archive devner.zip
 ```
 
 **Requirements**
 - Docker Desktop (macOS, Windows) or Docker Engine + Docker Compose v2 (Linux)
+- Go 1.22+ (to build from source)
 - (optional) `mkcert` for system-wide HTTPS trust outside browsers
 
 ## Quickstart
@@ -52,14 +53,12 @@ export INFOMANIAK_API_KEY=xxx
 devner agent "create a Next.js project called web and show me logs"
 ```
 
-## Migrate from v1
-
-If you have an existing `devner` v1 project directory with WordPress/Laravel projects:
+## Migrate from an existing projects directory
 
 ```bash
-devner import --source=~/path/to/old-devner/projects --dry-run
+devner import --source=~/path/to/old/projects --dry-run
 # review what would be imported
-devner import --source=~/path/to/old-devner/projects
+devner import --source=~/path/to/old/projects
 ```
 
 Detection:
@@ -90,7 +89,7 @@ devner db drop   <mysql|postgres> <name>
 devner hosts add <domain> [target]     # no-op for *.localhost
 devner hosts remove <domain>
 
-devner import --source=<path>          # migrate v1 projects
+devner import --source=<path>          # migrate projects from a directory
 devner reconcile [--apply]             # fix drift: store ↔ FS ↔ Caddy
 
 devner certs status
@@ -102,7 +101,13 @@ devner tui                             # interactive TUI
 
 ## Configuration
 
-Config file: `~/.config/devner/config.toml` (macOS/Linux), `%AppData%\devner\config.toml` (Windows).
+Config file location:
+
+| OS | Path |
+|---|---|
+| macOS | `~/Library/Application Support/devner/config.toml` |
+| Linux | `~/.config/devner/config.toml` |
+| Windows | `%AppData%\devner\config.toml` |
 
 Defaults:
 ```toml
@@ -162,7 +167,7 @@ internal/
   project/           # WP/Laravel/Node/Next/Astro detect + scaffold
   database/          # MySQL + Postgres ops (validated identifiers, random passwords)
   runtime/           # docker compose wrapper + docker exec/logs
-  network/           # txeh hosts file + Caddy admin API + mkcert
+  network/           # Caddyfile rendering + docker restart reload
   store/             # SQLite metadata (modernc — pure Go, no CGO)
   app/               # Deps bundle (shared CLI + TUI wiring)
   config/            # Viper TOML
@@ -174,22 +179,22 @@ migrations/          # SQLite schema (.sql + embed.FS)
 ## Development
 
 ```bash
-go build ./...
+make build      # builds ./bin/devner
+make test       # go test ./...
+make install    # copies binary to /usr/local/bin/devner (may need sudo)
+make clean      # removes ./bin and ./dist
+
+# Without Make:
+go build -o bin/devner ./cmd/devner
 go test ./...
-go build -o bin/devner ./cmd/devner && ./bin/devner tui
 ```
 
-Cross-compile test:
+Cross-compile:
 ```bash
-GOOS=linux  GOARCH=amd64 go build -o bin/devner-linux  ./cmd/devner
-GOOS=windows GOARCH=amd64 go build -o bin/devner.exe   ./cmd/devner
+make build-all      # bin/devner-{darwin,linux,windows}-{amd64,arm64}
 ```
 
 Release (local dry-run):
 ```bash
-goreleaser release --snapshot --clean
+make release-snapshot    # goreleaser --snapshot --clean
 ```
-
-## Why v2
-
-See the [plan](/.claude/plans/unified-splashing-charm.md) for motivation. TL;DR: the v1 bash orchestrator was macOS-centric, duplicated logic across bash + Makefile, and had no TUI or AI integration. v2 is a single Go binary with proper cross-platform support, a TUI, an AI agent with validated JSON-schema tools, and the same Docker stack.
