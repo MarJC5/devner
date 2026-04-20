@@ -2,13 +2,18 @@ name: ci
 
 on:
   push:
-    branches: [main, v2]
+    branches: [main, go]
   pull_request:
-    branches: [main, v2]
+    branches: [main, go]
 
 jobs:
+  # Go test matrix for the CLI + menubar + GUI bindings across the
+  # three target OSes. Wails is excluded here — it needs Node and is
+  # exercised separately in the release workflow. Keeping CI fast on
+  # PRs matters more than catching Wails-specific breakage early.
   test:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
@@ -18,12 +23,13 @@ jobs:
         with:
           go-version: "1.22"
           cache: true
-      - name: Build
-        working-directory: devner-go
-        run: go build ./...
+      - name: Build CLI
+        run: go build ./cmd/devner
+      # cmd/devner-menubar is excluded — fyne.io/systray needs CGO
+      # + libappindicator on Linux, which we only install in the
+      # release workflow. The menubar is covered there per-OS.
       - name: Test
-        working-directory: devner-go
-        run: go test ./...
+        run: go test ./internal/... ./cmd/devner/...
 
   vet:
     runs-on: ubuntu-latest
@@ -32,6 +38,25 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.22"
-      - name: go vet
-        working-directory: devner-go
-        run: go vet ./...
+      - run: go vet ./internal/... ./cmd/devner/...
+
+  # Frontend lint is cheap — catches typos in JSX before they ship
+  # via the Wails build. No full Wails build here to keep the PR CI
+  # under a minute.
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gui/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: gui/frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tsc --noEmit

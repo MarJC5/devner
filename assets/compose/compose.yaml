@@ -13,8 +13,6 @@ services:
     ports:
       - "1025:1025"
       - "8025:8025"
-    extra_hosts:
-      - "mailpit.localhost:127.0.0.1"
 
   frankenphp:
     build:
@@ -24,15 +22,16 @@ services:
     restart: unless-stopped
     environment:
       TZ: "${TZ:-Europe/Zurich}"
+    # Only HTTP(S) is exposed to the host. Dev servers listen on
+    # internal ports (3100-3999, allocated per project) and are
+    # reached through Caddy's reverse_proxy at https://<name>.localhost
+    # — no need to publish those ports. The Caddy admin API (2019)
+    # stays container-local too; reloads go through `docker restart`,
+    # not the admin API.
     ports:
       - "80:80"
       - "443:443"
       - "443:443/udp"
-      - "5173:5173"
-      - "3000:3000"
-      - "8081:8081"
-      - "4321:4321"
-      - "2019:2019"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DEVNER_PROJECTS_DIR}:/var/www/html/
@@ -97,8 +96,6 @@ services:
       ADMINER_PLUGINS: "tables-filter tinymce json-column dump-zip"
       ADMINER_DEFAULT_SERVER: mysql
       TZ: "${TZ:-Europe/Zurich}"
-    extra_hosts:
-      - "adminer.localhost:127.0.0.1"
 
   redis:
     image: redis:alpine

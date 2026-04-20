@@ -35,6 +35,8 @@ func registerCommands(root *cobra.Command) {
 		newCursorCmd(),
 		newPromptCmd(),
 		newDevCmd(),
+		newGuiCmd(),
+		newMenubarCmd(),
 	)
 }
 

@@ -3,7 +3,8 @@
 Local dev environment orchestrator for WordPress, Laravel, Node, Next.js and Astro projects.
 
 - Single cross-platform Go binary (macOS, Linux, Windows) — no bash, no Makefile for users
-- TUI (Bubble Tea) + scripting CLI (Cobra)
+- **Three interfaces** sharing the same backend: CLI (Cobra) · TUI (Bubble Tea) · native GUI (Wails + React + Tailwind)
+- macOS **menubar daemon** with Start / Stop / Open GUI and a live `stack N/M running` indicator
 - Built-in AI agent: ask in natural language, it calls tools (create projects, databases, hosts, logs, exec)
 - Multi-provider LLM: **Infomaniak AI Tools** (open-source models), Anthropic, local Ollama
 - Docker stack: FrankenPHP (PHP+Caddy+Node), MySQL 8.4, PostgreSQL + PostGIS, Redis, Mailpit, Adminer
@@ -107,6 +108,10 @@ devner certs install                   # mkcert -install
 devner models                          # list models of the active LLM provider
 devner agent "<prompt>"                # one-shot agent call
 devner tui                             # interactive TUI
+devner gui                             # launch the desktop app (Wails)
+devner menubar                         # launch the macOS menubar daemon
+devner menubar stop                    # kill it
+devner menubar status                  # check whether it's running
 ```
 
 ## Configuration
@@ -262,20 +267,54 @@ assets/              # embed.FS: compose.yaml, Dockerfile, php.ini, Caddyfile
 migrations/          # SQLite schema (.sql + embed.FS)
 ```
 
+## Desktop app (GUI)
+
+Cross-platform desktop app built with [Wails v2](https://wails.io) (Go backend + React + Tailwind frontend + native OS WebView). Shares `internal/app.Deps` with the CLI / TUI so every action goes through the same code path — no HTTP layer, no divergence.
+
+- Dark + light themes (Sun / Moon / System — follows macOS preference)
+- EN / FR UI (persisted in `localStorage`, selectable in Settings)
+- Frosted-glass panels on macOS (vibrancy) and Windows (Mica); flat clean look on Linux
+- Keyboard shortcuts: `⌘1..7` jump between Projects / Stack / Chat / Logs / Databases / Hosts / Settings
+
+```bash
+make gui-dev        # hot-reload Vite + auto Go rebuild on save
+make gui-build      # produces gui/build/bin/devner-gui(.app|.exe|binary)
+make gui-clean
+```
+
+Requirements: Go 1.22, Node 20, pnpm 9, and the Wails CLI:
+```bash
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+```
+
+Launched from the CLI with `devner gui` — the CLI searches `/Applications/Devner.app`, `gui/build/bin/Devner.app`, `devner-gui` on `$PATH`, or the `$DEVNER_GUI` env var.
+
+## Menubar daemon (macOS / Windows)
+
+A tiny standalone process (`cmd/devner-menubar`) owns a system-tray icon with Start stack / Stop stack / Open GUI entries and a live `stack N/M running` indicator. It runs as a separate binary because Wails and `fyne.io/systray` both want ownership of the main run loop.
+
+```bash
+devner menubar          # launch (backgrounded)
+devner menubar stop
+devner menubar status
+```
+
 ## Development
 
 ```bash
-make build      # builds ./bin/devner
-make test       # go test ./...
-make install    # copies binary to /usr/local/bin/devner (may need sudo)
-make clean      # removes ./bin and ./dist
+make build              # ./bin/devner
+make build-menubar      # ./bin/devner-menubar
+make build-all-bins     # CLI + menubar
+make test               # go test ./...
+make install            # copies devner to /usr/local/bin (may need sudo)
+make clean              # removes ./bin and ./dist
 
 # Without Make:
 go build -o bin/devner ./cmd/devner
 go test ./...
 ```
 
-Cross-compile:
+Cross-compile the CLI:
 ```bash
 make build-all      # bin/devner-{darwin,linux,windows}-{amd64,arm64}
 ```
@@ -284,3 +323,5 @@ Release (local dry-run):
 ```bash
 make release-snapshot    # goreleaser --snapshot --clean
 ```
+
+Release CI (GitHub Actions) attaches GUI archives — `Devner_darwin_{arm64,amd64}.zip`, `Devner_linux_amd64.tar.gz`, `Devner_windows_amd64.zip` — alongside the GoReleaser-produced CLI archives on every `v*` tag push.

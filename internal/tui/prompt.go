@@ -49,8 +49,8 @@ func (m promptModel) View() string {
 
 var promptHeaderStyle = lipgloss.NewStyle().
 	Bold(true).
-	Foreground(lipgloss.Color("#FAFAFA")).
-	Background(lipgloss.Color("#7D56F4")).
+	Foreground(highlight).
+	Background(primary).
 	Padding(0, 2)
 
 // RunPrompt launches the focused single-scene prompt UI.

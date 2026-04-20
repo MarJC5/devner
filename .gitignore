@@ -8,3 +8,17 @@ dist/
 
 # Client projects: WordPress / Laravel sites. Never commit.
 projects/
+
+# Wails GUI build artifacts.
+gui/build/bin/
+gui/frontend/dist/
+gui/frontend/node_modules/
+# Wails dev-mode binary (wails dev drops a bare `gui` executable
+# in the module root) and the package.json md5 it uses to detect
+# dep changes.
+gui/gui
+gui/frontend/package.json.md5
+# wailsjs/ contains auto-generated bindings — commit them so fresh
+# clones build without a `wails generate` step. If that turns out to be
+# noisy diff-wise later, uncomment the next line:
+# gui/frontend/wailsjs/

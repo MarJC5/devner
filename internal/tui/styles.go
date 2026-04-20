@@ -3,11 +3,22 @@ package tui
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	primary   = lipgloss.Color("#7D56F4")
-	subtle    = lipgloss.Color("#5C5C5C")
-	highlight = lipgloss.Color("#FAFAFA")
-	errColor  = lipgloss.Color("#FF5577")
-	okColor   = lipgloss.Color("#00C853")
+	// Palette — kept aligned with the GUI's Tailwind tokens so both
+	// surfaces feel like the same app.
+	primary      = lipgloss.Color("#4A6CF7") // accent / active tab bg
+	primaryMuted = lipgloss.Color("#F0F4FF") // very light on-dark text
+	primaryFaint = lipgloss.Color("#A0ACEE") // dim accent text
+	primaryDark  = lipgloss.Color("#3A58D8") // watermark / pressed state
+	subtle       = lipgloss.Color("#5C5C5C")
+	highlight    = lipgloss.Color("#FAFAFA")
+	errColor     = lipgloss.Color("#FF5577")
+	okColor      = lipgloss.Color("#00C853")
+
+	// Unused yet but exported so scenes can pull them in without
+	// re-declaring. Go complains if they're not referenced somewhere.
+	_ = primaryMuted
+	_ = primaryFaint
+	_ = primaryDark
 
 	tabStyle = lipgloss.NewStyle().
 			Padding(0, 2).

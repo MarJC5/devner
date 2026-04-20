@@ -14,15 +14,22 @@ INSTALL_DIR  ?= /usr/local/bin
 GOOS_LIST    := darwin linux windows
 GOARCH_LIST  := amd64 arm64
 
-.PHONY: help build run test vet tidy fmt install uninstall clean build-all release-snapshot release
+.PHONY: help build build-menubar build-all-bins run test vet tidy fmt install uninstall clean build-all release-snapshot release gui-dev gui-build gui-clean
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "Devner — make targets\n\nUsage: make <target>\n\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-build: ## Build the binary into ./bin/devner
+build: ## Build the CLI binary into ./bin/devner
 	@mkdir -p bin
 	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(OUT) $(PKG)
 	@echo "✓ $(OUT) ($(VERSION))"
+
+build-menubar: ## Build the macOS menubar daemon into ./bin/devner-menubar (native only — CGO required for Cocoa/systray)
+	@mkdir -p bin
+	go build -ldflags="-s -w" -o bin/devner-menubar ./cmd/devner-menubar
+	@echo "✓ bin/devner-menubar"
+
+build-all-bins: build build-menubar ## Build CLI + menubar side by side
 
 run: build ## Build and run the TUI
 	$(OUT) tui
@@ -67,3 +74,17 @@ release-snapshot: ## Run GoReleaser in snapshot mode (no tag, no push)
 
 release: ## Run GoReleaser for real (requires a git tag and GITHUB_TOKEN)
 	goreleaser release --clean
+
+# ---- GUI (Wails + React) ------------------------------------------------
+# Wails CLI is expected on PATH. If missing:
+#   go install github.com/wailsapp/wails/v2/cmd/wails@latest
+# And ensure $(go env GOPATH)/bin is on PATH.
+
+gui-dev: ## Launch the Wails GUI in dev mode (hot reload Vite + Go rebuild on save)
+	cd gui && PATH="$$(go env GOPATH)/bin:$$PATH" wails dev
+
+gui-build: ## Build the Wails GUI production bundle (gui/build/bin/devner-gui(.app/.exe/…))
+	cd gui && PATH="$$(go env GOPATH)/bin:$$PATH" wails build
+
+gui-clean: ## Remove the GUI build artifacts
+	rm -rf gui/build/bin gui/frontend/dist gui/frontend/wailsjs
