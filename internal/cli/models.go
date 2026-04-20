@@ -47,7 +47,11 @@ func newModelsCmd() *cobra.Command {
 			url := strings.TrimRight(base, "/") + "/models"
 
 			req, _ := http.NewRequestWithContext(cmd.Context(), http.MethodGet, url, nil)
-			if key := os.Getenv(pc.APIKeyEnv); key != "" {
+			key := pc.APIKey
+			if key == "" && pc.APIKeyEnv != "" {
+				key = os.Getenv(pc.APIKeyEnv)
+			}
+			if key != "" {
 				req.Header.Set("Authorization", "Bearer "+key)
 			}
 			client := &http.Client{Timeout: 15 * time.Second}

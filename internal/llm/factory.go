@@ -19,7 +19,7 @@ func FromConfig(cfg *config.Config, override string) (Provider, error) {
 	if !ok {
 		return nil, fmt.Errorf("provider %q not defined in config", name)
 	}
-	apiKey := os.Getenv(pc.APIKeyEnv)
+	apiKey := resolveAPIKey(pc)
 
 	baseURL, err := resolveBaseURL(name, pc)
 	if err != nil {
@@ -29,17 +29,29 @@ func FromConfig(cfg *config.Config, override string) (Provider, error) {
 	switch pc.Kind {
 	case "openai_compat":
 		if apiKey == "" && name != "ollama" {
-			return nil, fmt.Errorf("env var %s is empty (export your %s API key and retry)", pc.APIKeyEnv, name)
+			return nil, fmt.Errorf("no API key for %q: set api_key in config or export $%s", name, pc.APIKeyEnv)
 		}
 		return NewOpenAICompat(name, baseURL, apiKey, pc.Model), nil
 	case "anthropic":
 		if apiKey == "" {
-			return nil, fmt.Errorf("env var %s is empty", pc.APIKeyEnv)
+			return nil, fmt.Errorf("no API key for %q: set api_key in config or export $%s", name, pc.APIKeyEnv)
 		}
 		return NewAnthropic(name, apiKey, pc.Model), nil
 	default:
 		return nil, fmt.Errorf("unknown provider kind %q for %s", pc.Kind, name)
 	}
+}
+
+// resolveAPIKey prefers the direct api_key field, falling back to the env
+// var named by api_key_env.
+func resolveAPIKey(pc config.ProviderConfig) string {
+	if pc.APIKey != "" {
+		return pc.APIKey
+	}
+	if pc.APIKeyEnv != "" {
+		return os.Getenv(pc.APIKeyEnv)
+	}
+	return ""
 }
 
 // resolveBaseURL substitutes provider-specific placeholders in BaseURL.

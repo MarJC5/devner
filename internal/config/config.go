@@ -24,12 +24,18 @@ type LLMConfig struct {
 }
 
 type ProviderConfig struct {
-	BaseURL   string `mapstructure:"base_url"`
+	BaseURL string `mapstructure:"base_url"`
+	Model   string `mapstructure:"model"`
+	Kind    string `mapstructure:"kind"` // openai_compat | anthropic
+	// APIKey is the token read directly from the config file. Convenient
+	// for quick setup, but anyone with read access to the config file can
+	// see it — prefer APIKeyEnv for shared machines.
+	APIKey string `mapstructure:"api_key"`
+	// APIKeyEnv is the NAME of an environment variable holding the token
+	// (not the token itself). Used when APIKey is empty.
 	APIKeyEnv string `mapstructure:"api_key_env"`
-	Model     string `mapstructure:"model"`
-	Kind      string `mapstructure:"kind"` // openai_compat | anthropic
 	// ProductID is provider-specific. Infomaniak requires it in the
-	// URL path (".../1/ai/<product_id>/openai/..."). Substituted into
+	// URL path (".../2/ai/<product_id>/openai/..."). Substituted into
 	// BaseURL at Provider build time wherever "{product_id}" appears.
 	ProductID string `mapstructure:"product_id"`
 }
