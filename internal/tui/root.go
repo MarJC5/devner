@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"io"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -139,10 +140,31 @@ func SetStatus(s string) tea.Cmd {
 
 // Run starts the TUI. Accepts a ctx for graceful shutdown of background
 // tickers; current impl relies on tea.Quit instead.
+//
+// While the TUI is active we silence Runtime.Stdout / Stderr:
+// subprocess noise from `composer create-project`, `wp core download`
+// etc. would otherwise punch through Bubble Tea's alt-screen and leave
+// garbage lines at the bottom of the pane.
 func Run(ctx context.Context, d *app.Deps) error {
+	defer silenceRuntime(d)()
 	p := tea.NewProgram(NewRootModel(d), tea.WithAltScreen(), tea.WithContext(ctx))
 	_, err := p.Run()
 	return err
+}
+
+// silenceRuntime swaps d.Runtime.Stdout/Stderr to io.Discard and returns
+// a restore func to call on exit. Tools that want to capture output
+// (exec_in_project, tail_logs, …) already swap to their own captureWriter
+// before they run and restore afterwards, so this change affects only
+// the scaffold/post-setup paths that previously streamed to os.Stdout.
+func silenceRuntime(d *app.Deps) func() {
+	oldOut, oldErr := d.Runtime.Stdout, d.Runtime.Stderr
+	d.Runtime.Stdout = io.Discard
+	d.Runtime.Stderr = io.Discard
+	return func() {
+		d.Runtime.Stdout = oldOut
+		d.Runtime.Stderr = oldErr
+	}
 }
 
 // _ keeps ctx imported when not used directly.

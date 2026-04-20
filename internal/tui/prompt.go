@@ -54,7 +54,12 @@ var promptHeaderStyle = lipgloss.NewStyle().
 	Padding(0, 2)
 
 // RunPrompt launches the focused single-scene prompt UI.
+//
+// Runtime.Stdout / Stderr are silenced for the duration so scaffold
+// subprocesses (composer, wp, pnpm, …) don't punch through the
+// alt-screen — same rationale as Run() in root.go.
 func RunPrompt(ctx context.Context, d *app.Deps) error {
+	defer silenceRuntime(d)()
 	p := tea.NewProgram(newPromptModel(d), tea.WithAltScreen(), tea.WithContext(ctx))
 	_, err := p.Run()
 	if err != nil {
