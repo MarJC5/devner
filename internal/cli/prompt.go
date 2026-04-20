@@ -16,27 +16,8 @@ import (
 func newPromptCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "prompt",
-		Short: "Open a focused chat window for the agent (bind to Cmd+D / Ctrl+Shift+D)",
-		Long: `Launches a full-screen chat UI that closes on Esc.
-Suggested hotkey bindings:
-
-  macOS   — Shortcuts.app: New Shortcut, Action "Run Shell Script":
-              /usr/local/bin/devner prompt
-            Then assign Services menu + System Settings > Keyboard > Keyboard
-            Shortcuts > Services to Cmd+D.
-            Easier: Raycast → "Script Commands" or Alfred workflow
-            pointing at 'devner prompt', bind Cmd+D globally.
-
-  Windows — AutoHotkey v2 one-liner:
-              #d::Run 'wt.exe devner prompt'
-            Save as devner.ahk, add to Startup folder.
-
-  Linux   — GNOME: Settings > Keyboard > View and Customize Shortcuts >
-            Custom > command: 'gnome-terminal -- devner prompt', key: <Super>d.
-            KDE: System Settings > Shortcuts > Custom Shortcuts.
-
-In all cases, the hotkey launches a new terminal window running
-'devner prompt'. The TUI takes over until you press Esc.`,
+		Short: "Open a focused chat window for the agent",
+		Long:  `Launches a full-screen chat UI that closes on Esc. Run it from a terminal or alias it however you like.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			d, err := buildDeps()
 			if err != nil {
