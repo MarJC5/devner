@@ -47,7 +47,15 @@ uninstall: ## Remove the installed binary from $(INSTALL_DIR)
 	rm -f $(INSTALL_DIR)/$(BIN)
 
 clean: ## Remove build artifacts
-	rm -rf bin dist
+	rm -rf bin dist macos/*/build
+
+mac-app: ## Build the DevnerPrompt.app (macOS Cmd+D floating panel, requires Xcode CLT)
+	@bash macos/DevnerPrompt/build.sh
+
+mac-app-install: mac-app ## Install DevnerPrompt.app into /Applications
+	cp -R macos/DevnerPrompt/build/DevnerPrompt.app /Applications/
+	@echo "✓ copied to /Applications/DevnerPrompt.app"
+	@echo "  open it once to register the Cmd+D hotkey:  open /Applications/DevnerPrompt.app"
 
 build-all: ## Cross-compile for darwin/linux/windows × amd64/arm64
 	@mkdir -p bin

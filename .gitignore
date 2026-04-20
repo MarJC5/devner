@@ -8,3 +8,6 @@ dist/
 
 # Client projects: WordPress / Laravel sites. Never commit.
 projects/
+
+# macOS Swift app build output (DevnerPrompt.app is a compile artifact).
+macos/*/build/
