@@ -1,14 +1,10 @@
-# Folders
-/projects/*/
-
-# Config
-/services/frankenphp/Caddyfile
-
-#  Others
+bin/
+dist/
+*.db
+*.db-wal
+*.db-shm
+.env
 .DS_Store
 
-# Env
-.env
-
-# SSL
-*.crt
+# Client projects: WordPress / Laravel sites. Never commit.
+projects/

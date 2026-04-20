@@ -1,159 +1,195 @@
-# Devner
+# Devner v2
 
-## Description
+Local dev environment orchestrator for WordPress, Laravel, Node, Next.js and Astro projects.
 
-Devner is a flexible development environment boilerplate designed to work with multiple PHP and Node.js versions, alongside various databases. It leverages Docker and Docker Compose to create an isolated and reproducible environment for development.
+- Single cross-platform Go binary (macOS, Linux, Windows) — no bash, no Makefile
+- TUI (Bubble Tea) + scripting CLI (Cobra)
+- Built-in AI agent: ask in natural language, it calls tools (create projects, databases, hosts, logs, exec)
+- Multi-provider LLM: **Infomaniak AI Tools** (open-source models), Anthropic, local Ollama
+- Same Docker stack as v1: FrankenPHP (PHP+Caddy+Node), MySQL 8.4, PostgreSQL + PostGIS, Redis, Mailpit, Adminer
 
-## Requirements
+## Install
 
-- Docker
-- Docker Compose
-- Make
+**macOS / Linux**
+```bash
+# From release binary (when published)
+curl -L https://github.com/devner/devner/releases/latest/download/devner_darwin_arm64.tar.gz | tar -xz
+sudo mv devner /usr/local/bin/
 
-## Setup and Usage
-
-### 1. Clone the Repository
-
-```sh
-git clone https://github.com/MarJC5/devner.git
-cd devner
+# Or build from source
+git clone https://github.com/devner/devner.git
+cd devner/devner-go
+go build -o /usr/local/bin/devner ./cmd/devner
 ```
 
-### 2. Build and Start the Environment
-
-```sh
-make up
+**Windows** (PowerShell)
+```powershell
+# Or download the .zip from Releases and extract devner.exe into PATH.
+iwr -useb https://github.com/devner/devner/releases/latest/download/devner_windows_amd64.zip -o devner.zip
+Expand-Archive devner.zip
 ```
 
-### 3. Access the Devner Menu
+**Requirements**
+- Docker Desktop (macOS, Windows) or Docker Engine + Docker Compose v2 (Linux)
+- (optional) `mkcert` for system-wide HTTPS trust outside browsers
 
-```sh
-./devner.sh
-```
+## Quickstart
 
-### 4. Add alias to `.bashrc` or `.zshrc` (Optional)
-
-To allow easy access to the Devner anywhere, you can add an alias to your shell configuration file:
-
-```sh
-./devner.sh alias
-
-# Restart your terminal or run the following command:
-source ~/.bashrc # or source ~/.zshrc
-
-# Now you can access Devner from anywhere:
-devner
-```
-
-## Devner Menu
-
-The Devner menu allows you to manage various aspects of your development environment. Below are the available commands:
-
-### General Commands
-
-- **up**: Start the development environment.
-- **down**: Stop and remove containers, networks, images, and volumes.
-- **stop**: Stop all containers without removing them.
-- **rebuild**: Rebuild the Docker containers.
-- **delete**: Remove all containers and volumes.
-- **nocache**: Remove all containers and volumes and remove cache.
-- **reload**: Reload the frankenphp container to update Caddyfile.
-
-### Database Commands
-
-- **new-mysql**: Create a new MySQL database and user.
-- **remove-mysql**: Remove a MySQL database and user.
-- **new-postgres**: Create a new PostgreSQL database and user.
-- **remove-postgres**: Remove a PostgreSQL database and user.
-
-### Quick Access Commands
-
-- **postgres**: Access the PostgreSQL container.
-- **mysql**: Access the MySQL 8 container.
-- **node**: Access the Node container.
-- **frankenphp**: Access the FrankenPHP container.
-
-### Project Commands
-
-- **new**: Create a new Laravel or WordPress project.
-- **remove**: Remove an existing project.
-
-### Other Commands
-
-- **ps**: Check if the devner container is running.
-- **alias**: Add the devner alias to .bashrc or .zshrc.
-- **code**: Open a project in VSCode.
-- **wp**: Run wp-cli commands.
-
-### Caddyfile Commands
-
-- **add-host**: Add a new host to the Caddyfile.
-- **remove-host**: Remove an existing host from the Caddyfile.
-- **list-hosts**: List all hosts in the Caddyfile.
-
-### Help and Quit
-
-- **credit**: Show information about the Devner tools and author.
-- **help**: Show this help menu.
-- **quit**: Exit the script.
-
-## Example Usage
-
-### Starting the Development Environment
-
-To start the development environment, run:
-
-```sh
+```bash
+# 1. Start the shared stack (pulls images the first time)
 devner up
+
+# 2. Create a Laravel project with MySQL
+devner new laravel myapp --db=mysql
+# → scaffolded, DB created, Caddy configured
+# → https://myapp.localhost
+
+# 3. Interactive TUI
+devner tui
+
+# 4. Ask the agent (Infomaniak by default)
+export INFOMANIAK_API_KEY=xxx
+devner agent "create a Next.js project called web and show me logs"
 ```
 
-### Creating a New Project
+## Migrate from v1
 
-To create a new Laravel project with a MySQL database, run:
+If you have an existing `devner` v1 project directory with WordPress/Laravel projects:
 
-```sh
-devner new laravel myproject mysql
+```bash
+devner import --source=~/path/to/old-devner/projects --dry-run
+# review what would be imported
+devner import --source=~/path/to/old-devner/projects
 ```
 
-### Removing a Project
+Detection:
+- `wp-config.php` or `wp-settings.php` → WordPress (sniffs DB_NAME, DB_USER from wp-config.php)
+- `artisan` → Laravel (sniffs DB_DATABASE from `.env`)
+- `astro.config.*` → Astro
+- `next.config.*` → Next.js
+- `package.json` → Node
 
-To remove an existing project, run:
+## Commands
 
-```sh
-devner remove myproject mysql
+```
+devner up              # start stack
+devner down            # stop stack
+devner ps              # container status
+devner logs <svc>      # tail container logs
+devner restart [svc]   # restart stack / service
+devner rebuild         # force rebuild images
+devner delete --force  # destroy stack + volumes (DESTRUCTIVE)
+
+devner new <type> <name> [--db=mysql|postgres]
+devner remove <name>
+devner list
+
+devner db create <mysql|postgres> <name>
+devner db drop   <mysql|postgres> <name>
+
+devner hosts add <domain> [target]     # no-op for *.localhost
+devner hosts remove <domain>
+
+devner import --source=<path>          # migrate v1 projects
+devner reconcile [--apply]             # fix drift: store ↔ FS ↔ Caddy
+
+devner certs status
+devner certs install                   # mkcert -install
+
+devner agent "<prompt>"                # one-shot agent call
+devner tui                             # interactive TUI
 ```
 
-## Docker Compose Configuration
+## Configuration
 
-The following services are defined in the `docker-compose.yml` file:
+Config file: `~/.config/devner/config.toml` (macOS/Linux), `%AppData%\devner\config.toml` (Windows).
 
-### Networks
+Defaults:
+```toml
+[stack]
+data_dir     = "~/.devner"
+projects_dir = "~/devner/projects"
 
-- **default**: The default network for all services.
+[llm]
+active_provider = "infomaniak"
 
-### Services
+[llm.providers.infomaniak]
+base_url    = "https://api.infomaniak.com/1/ai/openai/v1"
+api_key_env = "INFOMANIAK_API_KEY"
+model       = "mixtral"
+kind        = "openai_compat"
 
-- **mailpit**: A local email testing service.
-- **frankenphp**: A PHP server with Caddy with Node.js development container.
-- **mysql**: MySQL database server.
-- **postgres**: PostgreSQL database server.
-- **adminer**: Database management tool.
+[llm.providers.anthropic]
+api_key_env = "ANTHROPIC_API_KEY"
+model       = "claude-opus-4-7"
+kind        = "anthropic"
 
-### Volumes
+[llm.providers.ollama]
+base_url    = "http://localhost:11434/v1"
+model       = "qwen2.5-coder:14b"
+kind        = "openai_compat"
+```
 
-- **mysql_data**: Persistent storage for MySQL data.
-- **postgres_data**: Persistent storage for PostgreSQL data.
+## Agent tools
 
-## Author
+The LLM sees these tools. Destructive ones (marked ⚠) require confirmation in the TUI or `--yes` on the CLI.
 
-[MarJC5](https://github.com/MarJC5)
+| Tool | Purpose |
+|---|---|
+| `list_projects` | list managed projects |
+| `project_status` | details for one project |
+| `create_project` | scaffold wordpress / laravel / node / nextjs / astro |
+| `delete_project` ⚠ | remove files + DB + Caddy entry |
+| `create_database` | mysql or postgres DB + user |
+| `drop_database` ⚠ | drop DB + user |
+| `start_stack` / `stop_stack` | lifecycle |
+| `rebuild_stack` ⚠ | rebuild images + recreate |
+| `tail_logs` | container logs |
+| `exec_in_project` ⚠ | run shell in frankenphp for wp-cli / artisan / npm |
 
-Connect with me:
+Every tool call is audited in `~/.devner/store.db` (`history` table).
 
-- **GitHub**: [MarJC5](https://github.com/MarJC5)
-- **LinkedIn**: [Jean-Christio Martin](https://linkedin.com/in/jean-christio-martin-385574111)
-- **Twitter**: [@jeanchristio](https://twitter.com/jeanchristio)
+## Architecture
 
-## License
+```
+cmd/devner/          # main (Cobra + Bubble Tea entrypoint)
+internal/
+  cli/               # Cobra subcommands
+  tui/               # Bubble Tea scenes (projects, stack, chat, logs, config)
+  agent/             # tool-use loop (max 10 iterations, destructive confirm)
+  llm/               # Provider interface + OpenAI-compat + Anthropic native
+  tools/             # Registry + JSON schemas
+  project/           # WP/Laravel/Node/Next/Astro detect + scaffold
+  database/          # MySQL + Postgres ops (validated identifiers, random passwords)
+  runtime/           # docker compose wrapper + docker exec/logs
+  network/           # txeh hosts file + Caddy admin API + mkcert
+  store/             # SQLite metadata (modernc — pure Go, no CGO)
+  app/               # Deps bundle (shared CLI + TUI wiring)
+  config/            # Viper TOML
+  platform/          # OS detection, hosts path, elevation check
+assets/              # embed.FS: compose.yaml, Dockerfile, php.ini, Caddyfile
+migrations/          # SQLite schema (.sql + embed.FS)
+```
 
-This project is licensed under the MIT License.
+## Development
+
+```bash
+go build ./...
+go test ./...
+go build -o bin/devner ./cmd/devner && ./bin/devner tui
+```
+
+Cross-compile test:
+```bash
+GOOS=linux  GOARCH=amd64 go build -o bin/devner-linux  ./cmd/devner
+GOOS=windows GOARCH=amd64 go build -o bin/devner.exe   ./cmd/devner
+```
+
+Release (local dry-run):
+```bash
+goreleaser release --snapshot --clean
+```
+
+## Why v2
+
+See the [plan](/.claude/plans/unified-splashing-charm.md) for motivation. TL;DR: the v1 bash orchestrator was macOS-centric, duplicated logic across bash + Makefile, and had no TUI or AI integration. v2 is a single Go binary with proper cross-platform support, a TUI, an AI agent with validated JSON-schema tools, and the same Docker stack.
