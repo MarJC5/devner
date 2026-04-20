@@ -16,6 +16,10 @@ func BuildDefault(d *app.Deps) *Registry {
 		&StopStack{D: d},
 		&RebuildStack{D: d},
 		&TailLogs{D: d},
+		&Composer{D: d},
+		&NPM{D: d},
+		&WPCli{D: d},
+		&Artisan{D: d},
 		&ExecInProject{D: d},
 	)
 }
