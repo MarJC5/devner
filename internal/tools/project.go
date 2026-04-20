@@ -4,14 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
-	"time"
 
 	"github.com/devner/devner/internal/app"
 	"github.com/devner/devner/internal/database"
 	"github.com/devner/devner/internal/network"
 	"github.com/devner/devner/internal/project"
-	"github.com/devner/devner/internal/store"
 )
 
 // applyCaddy rebuilds Caddy site config from the current project list.
@@ -65,14 +62,19 @@ func (t *ListProjects) Execute(ctx context.Context, _ json.RawMessage) (Result, 
 type CreateProject struct{ D *app.Deps }
 
 type createProjectArgs struct {
-	Name   string `json:"name"`
-	Type   string `json:"type"`
-	DB     string `json:"db,omitempty"`
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	DB            string `json:"db,omitempty"`
+	WPInstall     bool   `json:"wp_install,omitempty"`
+	WPSiteTitle   string `json:"wp_title,omitempty"`
+	WPAdminUser   string `json:"wp_admin,omitempty"`
+	WPAdminPass   string `json:"wp_password,omitempty"`
+	WPAdminEmail  string `json:"wp_email,omitempty"`
 }
 
 func (t *CreateProject) Name() string { return "create_project" }
 func (t *CreateProject) Description() string {
-	return "Scaffold a new project (wordpress|laravel|node|nextjs|astro) and optionally create a database. The project becomes available at https://<name>.localhost."
+	return "Scaffold a new project and wire it up end-to-end: optional database + user, framework config (Laravel .env + key:generate, WordPress wp-config.php, optional wp core install), Caddy site + HTTPS. The project becomes reachable at https://<name>.localhost."
 }
 func (t *CreateProject) Destructive() bool { return false }
 func (t *CreateProject) Schema() json.RawMessage {
@@ -81,7 +83,12 @@ func (t *CreateProject) Schema() json.RawMessage {
   "properties":{
     "name":{"type":"string","description":"Project name. Lowercase letters, digits, hyphens. Must start with a letter."},
     "type":{"type":"string","enum":["wordpress","laravel","node","nextjs","astro"]},
-    "db":{"type":"string","enum":["mysql","postgres",""],"description":"Optional database to create alongside the project."}
+    "db":{"type":"string","enum":["mysql","postgres",""],"description":"Optional database engine."},
+    "wp_install":{"type":"boolean","description":"WordPress only: run 'wp core install' after setup so the site is immediately usable."},
+    "wp_title":{"type":"string"},
+    "wp_admin":{"type":"string"},
+    "wp_password":{"type":"string"},
+    "wp_email":{"type":"string"}
   },
   "required":["name","type"],
   "additionalProperties":false
@@ -96,44 +103,39 @@ func (t *CreateProject) Execute(ctx context.Context, raw json.RawMessage) (Resul
 	if err != nil {
 		return Result{Content: err.Error()}, err
 	}
-	if err := project.ValidateName(a.Name); err != nil {
+
+	res, err := t.D.CreateProject(ctx, app.CreateProjectRequest{
+		Name:       a.Name,
+		Type:       typ,
+		DBEngine:   a.DB,
+		WPInstall:  a.WPInstall,
+		WPTitle:    a.WPSiteTitle,
+		WPAdmin:    a.WPAdminUser,
+		WPPassword: a.WPAdminPass,
+		WPEmail:    a.WPAdminEmail,
+	})
+	if err != nil {
 		return Result{Content: err.Error()}, err
 	}
-
-	if err := t.D.Project.Scaffold(ctx, typ, a.Name); err != nil {
-		return Result{Content: "scaffold failed: " + err.Error()}, err
+	msg := fmt.Sprintf("✓ created %s (%s). URL: https://%s", res.Project.Name, a.Type, res.Project.Domain)
+	if res.DBCreds != nil {
+		msg += fmt.Sprintf("\n  DB: %s/%s user=%s host=%s:%d", a.DB, res.DBCreds.Database, res.DBCreds.User, res.DBCreds.Host, res.DBCreds.Port)
 	}
-
-	dbName := ""
-	if a.DB != "" {
-		if err := database.ValidateName(a.Name); err != nil {
-			return Result{Content: "project name invalid as db name: " + err.Error()}, err
+	if a.WPInstall {
+		admin := a.WPAdminUser
+		if admin == "" {
+			admin = "admin"
 		}
-		creds, err := t.D.DB.Create(ctx, database.Engine(a.DB), a.Name)
-		if err != nil {
-			return Result{Content: "db create failed: " + err.Error()}, err
+		pass := a.WPAdminPass
+		if pass == "" {
+			pass = "admin"
 		}
-		dbName = creds.Database
+		msg += fmt.Sprintf("\n  WP admin: %s / %s", admin, pass)
 	}
-
-	domain := a.Name + ".localhost"
-	p := store.Project{
-		Name:      a.Name,
-		Type:      string(typ),
-		DBEngine:  a.DB,
-		DBName:    dbName,
-		Domain:    domain,
-		Path:      filepath.Join(t.D.Config.Stack.ProjectsDir, a.Name),
-		CreatedAt: time.Now(),
-	}
-	if err := t.D.Store.UpsertProject(ctx, p); err != nil {
-		return Result{Content: "store failed: " + err.Error()}, err
-	}
-	if err := applyCaddy(ctx, t.D); err != nil {
-		return Result{Content: "caddy apply failed: " + err.Error()}, err
-	}
-	return Result{Content: fmt.Sprintf("✓ created %s (%s). URL: https://%s", a.Name, a.Type, domain)}, nil
+	_ = res
+	return Result{Content: msg}, nil
 }
+
 
 // ---- delete_project ----
 

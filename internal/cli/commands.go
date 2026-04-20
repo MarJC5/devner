@@ -3,12 +3,11 @@ package cli
 import (
 	"context"
 	"fmt"
-	"time"
 
+	"github.com/devner/devner/internal/app"
 	"github.com/devner/devner/internal/database"
 	"github.com/devner/devner/internal/network"
 	"github.com/devner/devner/internal/project"
-	"github.com/devner/devner/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -41,69 +40,80 @@ func registerCommands(root *cobra.Command) {
 
 func newNewCmd() *cobra.Command {
 	var dbEngine string
+	var wpInstall bool
+	var wpTitle, wpAdmin, wpPass, wpEmail string
+
 	cmd := &cobra.Command{
 		Use:   "new <type> <name>",
 		Short: "Create a new project (wordpress|laravel|node|nextjs|astro)",
-		Args:  cobra.ExactArgs(2),
+		Long: `Creates a new project with one command:
+  - scaffold (composer create-project, wp core download, pnpm create, ...)
+  - optional database + user (--db=mysql|postgres)
+  - framework wiring (.env for Laravel, wp-config.php for WordPress)
+  - Caddy site + HTTPS
+
+For WordPress, pass --wp-install to run 'wp core install' too.`,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			typ, err := project.ParseType(args[0])
 			if err != nil {
 				return err
 			}
 			name := args[1]
-			if err := project.ValidateName(name); err != nil {
-				return err
-			}
 
 			d, err := buildDeps()
 			if err != nil {
 				return err
 			}
-			defer d.Store.Close()
-
-			ctx := cmd.Context()
+			defer d.Close()
 
 			fmt.Printf("→ scaffolding %s project %q\n", typ, name)
-			if err := d.Project.Scaffold(ctx, typ, name); err != nil {
-				return fmt.Errorf("scaffold: %w", err)
-			}
-
-			dbName := ""
 			if dbEngine != "" {
-				if err := database.ValidateName(name); err != nil {
-					return fmt.Errorf("project name cannot be used as db name: %w", err)
-				}
-				fmt.Printf("→ creating %s database %q\n", dbEngine, name)
-				creds, err := d.DB.Create(ctx, database.Engine(dbEngine), name)
-				if err != nil {
-					return fmt.Errorf("db: %w", err)
-				}
-				dbName = creds.Database
-				fmt.Printf("  user=%s host=%s port=%d\n", creds.User, creds.Host, creds.Port)
+				fmt.Printf("→ provisioning %s database + framework config\n", dbEngine)
+			}
+			if wpInstall {
+				fmt.Printf("→ running 'wp core install'\n")
 			}
 
-			domain := name + ".localhost"
-			p := store.Project{
-				Name:      name,
-				Type:      string(typ),
-				DBEngine:  dbEngine,
-				DBName:    dbName,
-				Domain:    domain,
-				Path:      d.Config.Stack.ProjectsDir + "/" + name,
-				CreatedAt: time.Now(),
-			}
-			if err := d.Store.UpsertProject(ctx, p); err != nil {
-				return fmt.Errorf("store: %w", err)
+			res, err := d.CreateProject(cmd.Context(), app.CreateProjectRequest{
+				Name:       name,
+				Type:       typ,
+				DBEngine:   dbEngine,
+				WPInstall:  wpInstall,
+				WPTitle:    wpTitle,
+				WPAdmin:    wpAdmin,
+				WPPassword: wpPass,
+				WPEmail:    wpEmail,
+			})
+			if err != nil {
+				return err
 			}
 
-			if err := applyCaddySites(ctx, d); err != nil {
-				return fmt.Errorf("caddy apply: %w", err)
+			fmt.Printf("\n✓ %s ready at https://%s\n", res.Project.Name, res.Project.Domain)
+			if res.DBCreds != nil {
+				fmt.Printf("  DB: %s / %s   user=%s   host=%s:%d\n",
+					dbEngine, res.DBCreds.Database, res.DBCreds.User, res.DBCreds.Host, res.DBCreds.Port)
 			}
-			fmt.Printf("✓ %s ready at https://%s\n", name, domain)
+			if wpInstall {
+				admin := wpAdmin
+				if admin == "" {
+					admin = "admin"
+				}
+				pass := wpPass
+				if pass == "" {
+					pass = "admin"
+				}
+				fmt.Printf("  WP admin: %s / %s\n", admin, pass)
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVar(&dbEngine, "db", "", "database engine: mysql | postgres")
+	cmd.Flags().BoolVar(&wpInstall, "wp-install", false, "run wp core install (WordPress only)")
+	cmd.Flags().StringVar(&wpTitle, "wp-title", "", "WordPress site title (default: project name)")
+	cmd.Flags().StringVar(&wpAdmin, "wp-admin", "", "WordPress admin username (default: admin)")
+	cmd.Flags().StringVar(&wpPass, "wp-password", "", "WordPress admin password (default: admin)")
+	cmd.Flags().StringVar(&wpEmail, "wp-email", "", "WordPress admin email (default: admin@localhost.test)")
 	return cmd
 }
 
@@ -357,18 +367,8 @@ func newHostsCmd() *cobra.Command {
 	return cmd
 }
 
-// applyCaddySites pushes the current list of projects to Caddy admin API.
+// applyCaddySites pushes the current list of projects to Caddy. Thin
+// wrapper around app.Deps.ApplyCaddy kept here so cli callers read naturally.
 func applyCaddySites(ctx context.Context, d *Deps) error {
-	projects, err := d.Store.ListProjects(ctx)
-	if err != nil {
-		return err
-	}
-	var sites []network.ProjectSite
-	for _, p := range projects {
-		sites = append(sites, network.ProjectSite{
-			Domain: p.Domain,
-			Root:   project.Type(p.Type).DocRoot(p.Name),
-		})
-	}
-	return d.Caddy.Apply(ctx, sites)
+	return d.ApplyCaddy(ctx)
 }

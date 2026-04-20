@@ -39,25 +39,39 @@ func (m *MySQLOps) Create(ctx context.Context, dbName, user, password string) er
 	}
 	defer db.Close()
 
-	// identifiers validated by ValidateName — safe to interpolate
+	// MySQL DDL statements like CREATE USER ... IDENTIFIED BY ... do not
+	// accept placeholder parameters in MySQL 8.x — Exec() silently passes
+	// the literal ? to the server, yielding a syntax error. Interpolate
+	// the password inline; it's a random 32-hex string so injection isn't
+	// a concern, and identifiers are already ValidateName-checked.
 	stmts := []string{
 		fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", dbName),
-		fmt.Sprintf("CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY ?", user),
+		fmt.Sprintf("CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s'", user, mysqlEscape(password)),
 		fmt.Sprintf("GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'%%'", dbName, user),
 		"FLUSH PRIVILEGES",
 	}
-	for i, s := range stmts {
-		var err error
-		if i == 1 {
-			_, err = db.ExecContext(ctx, s, password)
-		} else {
-			_, err = db.ExecContext(ctx, s)
-		}
-		if err != nil {
+	for _, s := range stmts {
+		if _, err := db.ExecContext(ctx, s); err != nil {
 			return fmt.Errorf("mysql: %s: %w", s, err)
 		}
 	}
 	return nil
+}
+
+// mysqlEscape escapes single quotes + backslashes for embedding in a
+// MySQL single-quoted string literal. Defensive: our passwords come from
+// GeneratePassword() which is hex-only, but callers could change.
+func mysqlEscape(s string) string {
+	out := make([]byte, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '\'', '\\':
+			out = append(out, '\\', s[i])
+		default:
+			out = append(out, s[i])
+		}
+	}
+	return string(out)
 }
 
 func (m *MySQLOps) Drop(ctx context.Context, dbName, user string) error {
