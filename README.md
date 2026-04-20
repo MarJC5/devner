@@ -176,7 +176,11 @@ The LLM sees these tools. Destructive ones (marked ⚠) require confirmation in 
 | `start_stack` / `stop_stack` | lifecycle |
 | `rebuild_stack` ⚠ | rebuild images + recreate |
 | `tail_logs` | container logs |
-| `exec_in_project` ⚠ | run shell in frankenphp for wp-cli / artisan / npm |
+| `composer` ⚠ | run composer install / require / update in the project |
+| `npm` ⚠ | run npm / pnpm / yarn install / build / add in the project |
+| `wp_cli` ⚠ | run WP-CLI: plugin install, option get, user create, etc. |
+| `artisan` ⚠ | run `php artisan` on a Laravel project |
+| `exec_in_project` ⚠ | arbitrary shell escape hatch (prefer the typed tools above) |
 
 Every tool call is audited in `~/.devner/store.db` (`history` table).
 
