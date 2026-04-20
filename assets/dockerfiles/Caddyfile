@@ -1,10 +1,9 @@
 {
-	# Enable admin API for dynamic config
+	# Enable admin API for dynamic config.
+	# Per-project sites are pushed via POST /load (see internal/network/caddy.go).
 	admin 0.0.0.0:2019
-	frankenphp {
-		worker /var/www/html/index.php
-	}
+	frankenphp
 }
 
-# Per-project sites are added dynamically via Caddy admin API.
-# See: internal/network/caddy.go
+# No worker, no static sites declared — all routing is configured at runtime
+# via the Caddy admin API once projects are registered in the devner store.

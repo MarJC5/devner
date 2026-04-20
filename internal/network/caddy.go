@@ -1,29 +1,36 @@
-// Caddy admin API client.
+// Package network — Caddy configuration for devner sites.
 //
-// The shared stack runs Caddy (via FrankenPHP) with the admin API exposed on
-// :2019. We push per-project site blocks as JSON config and delete them the
-// same way — no Caddyfile concat, no reload-via-SIGHUP race condition.
+// FrankenPHP bundles Caddy with a non-standard admin lifecycle: PUT/POST to
+// the admin API causes Caddy to restart its own admin listener, which kills
+// the in-flight HTTP connection (symptom: "stopping admin server: 10s
+// timeout" every reload). Instead of fighting it, we render a Caddyfile to
+// a bind-mounted path and ask Caddy to reload it via `caddy reload` — this
+// is hot-reload (no downtime, no port flip, no TLS cert churn).
 package network
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"time"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
 )
 
 type CaddyClient struct {
-	BaseURL string
-	HTTP    *http.Client
+	// CaddyfilePath is the host-side path to the Caddyfile. Mounted into
+	// the container at /etc/frankenphp/Caddyfile.
+	CaddyfilePath string
+	// Container is the docker compose container name, e.g. "frankenphp_devner".
+	Container string
 }
 
 func NewCaddyClient() *CaddyClient {
+	home, _ := os.UserHomeDir()
 	return &CaddyClient{
-		BaseURL: "http://127.0.0.1:2019",
-		HTTP:    &http.Client{Timeout: 10 * time.Second},
+		CaddyfilePath: filepath.Join(home, ".devner", "frankenphp", "Caddyfile"),
+		Container:     "frankenphp_devner",
 	}
 }
 
@@ -33,81 +40,52 @@ type ProjectSite struct {
 	Root   string // container-side path, e.g. /var/www/html/myapp/public
 }
 
-// Apply replaces the full Caddy config with one derived from `sites`.
-// Using PUT /config is atomic — no partial state if a single site is invalid.
+// Apply writes a Caddyfile with one site block per project and restarts
+// FrankenPHP to load it. Idempotent.
+//
+// Note on reload strategy: `caddy reload` / `frankenphp reload` both use the
+// admin API, which FrankenPHP currently mishandles on reload (restarting
+// its own admin listener times out the request — "stopping admin server:
+// 10s timeout"). A `docker restart` of the container is ~3s of downtime,
+// acceptable for a local dev tool, and completely reliable. TLS certs are
+// persisted in the caddy_data volume so no re-issuance.
 func (c *CaddyClient) Apply(ctx context.Context, sites []ProjectSite) error {
-	cfg := buildConfig(sites)
-	body, err := json.Marshal(cfg)
-	if err != nil {
+	cf := renderCaddyfile(sites)
+	if err := os.MkdirAll(filepath.Dir(c.CaddyfilePath), 0o755); err != nil {
 		return err
+	}
+	if err := os.WriteFile(c.CaddyfilePath, []byte(cf), 0o644); err != nil {
+		return fmt.Errorf("write Caddyfile: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/load", bytes.NewReader(body))
+	cmd := exec.CommandContext(ctx, "docker", "restart", "-t", "5", c.Container)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return fmt.Errorf("caddy admin: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		msg, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("caddy admin %d: %s", resp.StatusCode, msg)
+		return fmt.Errorf("docker restart: %w: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
 
-func buildConfig(sites []ProjectSite) map[string]any {
-	var servers map[string]any
-	if len(sites) == 0 {
-		servers = map[string]any{}
-	} else {
-		var routes []any
-		for _, s := range sites {
-			routes = append(routes, map[string]any{
-				"match": []any{map[string]any{"host": []string{s.Domain}}},
-				"handle": []any{
-					map[string]any{
-						"handler": "subroute",
-						"routes": []any{
-							map[string]any{
-								"handle": []any{
-									map[string]any{"handler": "vars", "root": s.Root},
-									map[string]any{
-										"handler":     "php",
-										"root":        s.Root,
-										"try_files":   []string{"{http.request.uri.path}", "{http.request.uri.path}/index.php", "index.php"},
-										"split_path":  []string{".php"},
-									},
-									map[string]any{"handler": "file_server", "root": s.Root},
-								},
-							},
-						},
-					},
-				},
-				"terminal": true,
-			})
-		}
-		servers = map[string]any{
-			"srv0": map[string]any{
-				"listen": []string{":443"},
-				"routes": routes,
-			},
-			"srv_http": map[string]any{
-				"listen": []string{":80"},
-				"routes": routes,
-			},
-		}
-	}
+// renderCaddyfile produces a Caddyfile covering the global admin block plus
+// one site block per project. Sites are sorted for deterministic output.
+func renderCaddyfile(sites []ProjectSite) string {
+	sorted := make([]ProjectSite, len(sites))
+	copy(sorted, sites)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Domain < sorted[j].Domain })
 
-	return map[string]any{
-		"admin": map[string]any{"listen": "0.0.0.0:2019"},
-		"apps": map[string]any{
-			"http": map[string]any{
-				"servers": servers,
-			},
-		},
+	var b strings.Builder
+	b.WriteString("{\n")
+	b.WriteString("\t# Keep admin API enabled for tooling (curl, diagnostics).\n")
+	b.WriteString("\tadmin 0.0.0.0:2019\n")
+	b.WriteString("\tfrankenphp\n")
+	b.WriteString("}\n\n")
+
+	for _, s := range sorted {
+		fmt.Fprintf(&b, "%s {\n", s.Domain)
+		fmt.Fprintf(&b, "\troot * %s\n", s.Root)
+		b.WriteString("\tphp_server\n")
+		b.WriteString("\tfile_server\n")
+		b.WriteString("}\n\n")
 	}
+	return b.String()
 }
