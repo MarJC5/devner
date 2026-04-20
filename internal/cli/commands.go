@@ -33,6 +33,7 @@ func registerCommands(root *cobra.Command) {
 		newCodeCmd(),
 		newZedCmd(),
 		newCursorCmd(),
+		newPromptCmd(),
 	)
 }
 
