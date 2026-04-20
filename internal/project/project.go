@@ -16,17 +16,36 @@ import (
 type Type string
 
 const (
-	WordPress  Type = "wordpress"
-	Laravel    Type = "laravel"
-	Node       Type = "node"
-	NextJS     Type = "nextjs"
-	Nuxt       Type = "nuxt"
-	Astro      Type = "astro"
-	SvelteKit  Type = "sveltekit"
-	Vite       Type = "vite"
+	WordPress Type = "wordpress"
+	Laravel   Type = "laravel"
+	PHP       Type = "php"
+	Node      Type = "node"
+	NextJS    Type = "nextjs"
+	Nuxt      Type = "nuxt"
+	Astro     Type = "astro"
+	SvelteKit Type = "sveltekit"
+	Vite      Type = "vite"
 )
 
-var KnownTypes = []Type{WordPress, Laravel, Node, NextJS, Nuxt, Astro, SvelteKit, Vite}
+var KnownTypes = []Type{WordPress, Laravel, PHP, Node, NextJS, Nuxt, Astro, SvelteKit, Vite}
+
+// DevMode describes what kind of dev-time process (if any) a project wants
+// when `devner dev start` is invoked. It's stored alongside the project so
+// detection runs once at import/create, not on every dev command.
+type DevMode string
+
+const (
+	// DevModeServer: HTTP dev server with HMR. Requires a dev_port so
+	// Caddy can reverse-proxy the project's URL to it (Next/Vite/Astro
+	// apps).
+	DevModeServer DevMode = "server"
+	// DevModeWatch: asset-compile in watch mode alongside a PHP backend.
+	// No port, no Caddy routing change — PHP still serves HTTP.
+	DevModeWatch DevMode = "watch"
+	// DevModeNone: no dev-time process. Libraries, plain PHP without an
+	// asset pipeline, static sites.
+	DevModeNone DevMode = ""
+)
 
 func ParseType(s string) (Type, error) {
 	t := Type(strings.ToLower(s))
@@ -40,10 +59,15 @@ func ParseType(s string) (Type, error) {
 
 // DocRoot is the container-side subpath under /var/www/html/<name> that
 // Caddy should serve as document root. Determined per project type.
+//
+// For the generic PHP type we assume /public if the project follows the
+// common "front controller in public/" layout (Symfony, Slim, most
+// modern PHP CMSes). Callers that need absolute accuracy should inspect
+// the FS and override.
 func (t Type) DocRoot(name string) string {
 	base := "/var/www/html/" + name
 	switch t {
-	case Laravel:
+	case Laravel, PHP:
 		return base + "/public"
 	case WordPress:
 		return base
@@ -106,6 +130,8 @@ func (s *Service) Scaffold(ctx context.Context, t Type, name string, opts Scaffo
 	}
 
 	switch t {
+	case PHP:
+		return errors.New("generic PHP projects are import-only — drop your code in projects/<name> and run `devner import`")
 	case Laravel:
 		return s.Exec.Exec(ctx, "frankenphp", []string{
 			"bash", "-lc",

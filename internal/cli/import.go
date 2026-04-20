@@ -53,7 +53,7 @@ func newImportCmd() *cobra.Command {
 					continue
 				}
 				projDir := filepath.Join(src, e.Name())
-				typ, ok := project.Detect(projDir)
+				result, ok := project.Detect(projDir)
 				if !ok {
 					fmt.Printf("  ? skip %-30s (unrecognized)\n", e.Name())
 					skipped++
@@ -66,23 +66,47 @@ func newImportCmd() *cobra.Command {
 					continue
 				}
 
-				db := project.SniffDB(projDir, typ)
+				db := project.SniffDB(projDir, result.Type)
+
+				// Allocate a dev port only for projects that actually
+				// want an HTTP dev server. Watch-mode (PHP+assets) and
+				// library imports keep DevPort=0 — their routing stays
+				// on the PHP `php_server + file_server` path (or is
+				// irrelevant, for libraries).
+				devPort := 0
+				if !dryRun && result.DevMode == project.DevModeServer {
+					port, err := d.Store.AllocateDevPort(ctx)
+					if err != nil {
+						fmt.Printf("  ! skip %-30s (port allocation: %v)\n", e.Name(), err)
+						skipped++
+						continue
+					}
+					devPort = port
+				}
+
 				p := store.Project{
-					Name:      e.Name(),
-					Type:      string(typ),
-					DBEngine:  db.Engine,
-					DBName:    db.Name,
-					Domain:    e.Name() + ".localhost",
-					Path:      projDir,
-					CreatedAt: time.Now(),
+					Name:       e.Name(),
+					Type:       string(result.Type),
+					DBEngine:   db.Engine,
+					DBName:     db.Name,
+					Domain:     e.Name() + ".localhost",
+					Path:       projDir,
+					CreatedAt:  time.Now(),
+					DevPort:    devPort,
+					DevMode:    string(result.DevMode),
+					DevCommand: result.DevCommand,
 				}
 
 				dbSummary := "no-db"
 				if db.Name != "" {
 					dbSummary = db.Engine + "/" + db.Name
 				}
+				modeSummary := string(result.DevMode)
+				if modeSummary == "" {
+					modeSummary = "none"
+				}
 				if dryRun {
-					fmt.Printf("  + would import  %-25s  type=%-10s  %s\n", p.Name, p.Type, dbSummary)
+					fmt.Printf("  + would import  %-25s  type=%-10s  mode=%-7s  %s\n", p.Name, p.Type, modeSummary, dbSummary)
 					imported++
 					continue
 				}
@@ -91,12 +115,20 @@ func newImportCmd() *cobra.Command {
 					skipped++
 					continue
 				}
-				fmt.Printf("  + imported     %-25s  type=%-10s  %s\n", p.Name, p.Type, dbSummary)
+				fmt.Printf("  + imported     %-25s  type=%-10s  mode=%-7s  %s\n", p.Name, p.Type, modeSummary, dbSummary)
 				imported++
 			}
 
 			fmt.Printf("\n%d imported, %d skipped\n", imported, skipped)
 			if !dryRun && imported > 0 {
+				// Push the freshly-classified project set to Caddy so
+				// newly-imported or re-classified projects start routing
+				// without a separate `devner reconcile --apply` call.
+				if err := d.ApplyCaddy(ctx); err != nil {
+					fmt.Printf("\nWarning: caddy apply failed: %v (run `devner reconcile --apply`)\n", err)
+				} else {
+					fmt.Printf("\n✓ Caddy config updated\n")
+				}
 				fmt.Printf("\nNext: `devner up` to start the stack, then `devner list` to verify.\n")
 				fmt.Printf("Note: project files stay at %s (not moved).\n", src)
 			}

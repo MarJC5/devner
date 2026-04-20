@@ -28,9 +28,17 @@ type Project struct {
 	CreatedAt time.Time
 	// DevPort is the internal container port Caddy reverse-proxies to for
 	// Node/Next/Astro/Vite projects. 0 means the project doesn't need one
-	// (PHP, static only). Allocated by AllocateDevPort, persisted, and
-	// never changes for the life of the project.
+	// (PHP, static only, library). Allocated by AllocateDevPort, persisted,
+	// and never changes for the life of the project.
 	DevPort int
+	// DevMode classifies the dev-time process a project wants:
+	//   "server" — HMR dev server (reverse-proxy routing, needs DevPort)
+	//   "watch"  — asset compile in watch mode (no port, PHP-served)
+	//   ""       — no dev-time process (library, plain static, plain PHP)
+	DevMode string
+	// DevCommand is the pnpm script name to invoke for DevMode server/watch
+	// (e.g. "dev", "watch", "start"). Resolved once at detection time.
+	DevCommand string
 }
 
 type HostEntry struct {
@@ -138,16 +146,18 @@ func (s *Store) migrate() error {
 
 func (s *Store) UpsertProject(ctx context.Context, p Project) error {
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO projects(name,type,db_engine,db_name,domain,path,created_at,dev_port)
-		VALUES(?,?,?,?,?,?,?,?)
+		INSERT INTO projects(name,type,db_engine,db_name,domain,path,created_at,dev_port,dev_mode,dev_command)
+		VALUES(?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(name) DO UPDATE SET
 			type=excluded.type,
 			db_engine=excluded.db_engine,
 			db_name=excluded.db_name,
 			domain=excluded.domain,
 			path=excluded.path,
-			dev_port=excluded.dev_port
-	`, p.Name, p.Type, p.DBEngine, p.DBName, p.Domain, p.Path, p.CreatedAt.Unix(), p.DevPort)
+			dev_port=excluded.dev_port,
+			dev_mode=excluded.dev_mode,
+			dev_command=excluded.dev_command
+	`, p.Name, p.Type, p.DBEngine, p.DBName, p.Domain, p.Path, p.CreatedAt.Unix(), p.DevPort, p.DevMode, p.DevCommand)
 	return err
 }
 
@@ -157,10 +167,10 @@ func (s *Store) DeleteProject(ctx context.Context, name string) error {
 }
 
 func (s *Store) GetProject(ctx context.Context, name string) (*Project, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT name,type,db_engine,db_name,domain,path,created_at,dev_port FROM projects WHERE name=?`, name)
+	row := s.db.QueryRowContext(ctx, `SELECT name,type,db_engine,db_name,domain,path,created_at,dev_port,dev_mode,dev_command FROM projects WHERE name=?`, name)
 	var p Project
 	var ts int64
-	if err := row.Scan(&p.Name, &p.Type, &p.DBEngine, &p.DBName, &p.Domain, &p.Path, &ts, &p.DevPort); err != nil {
+	if err := row.Scan(&p.Name, &p.Type, &p.DBEngine, &p.DBName, &p.Domain, &p.Path, &ts, &p.DevPort, &p.DevMode, &p.DevCommand); err != nil {
 		return nil, err
 	}
 	p.CreatedAt = time.Unix(ts, 0)
@@ -168,7 +178,7 @@ func (s *Store) GetProject(ctx context.Context, name string) (*Project, error) {
 }
 
 func (s *Store) ListProjects(ctx context.Context) ([]Project, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT name,type,db_engine,db_name,domain,path,created_at,dev_port FROM projects ORDER BY name`)
+	rows, err := s.db.QueryContext(ctx, `SELECT name,type,db_engine,db_name,domain,path,created_at,dev_port,dev_mode,dev_command FROM projects ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +187,7 @@ func (s *Store) ListProjects(ctx context.Context) ([]Project, error) {
 	for rows.Next() {
 		var p Project
 		var ts int64
-		if err := rows.Scan(&p.Name, &p.Type, &p.DBEngine, &p.DBName, &p.Domain, &p.Path, &ts, &p.DevPort); err != nil {
+		if err := rows.Scan(&p.Name, &p.Type, &p.DBEngine, &p.DBName, &p.Domain, &p.Path, &ts, &p.DevPort, &p.DevMode, &p.DevCommand); err != nil {
 			return nil, err
 		}
 		p.CreatedAt = time.Unix(ts, 0)

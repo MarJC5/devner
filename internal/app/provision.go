@@ -91,27 +91,36 @@ func (d *Deps) CreateProject(ctx context.Context, req CreateProjectRequest) (*Cr
 		dbName = creds.Database
 	}
 
-	// Node-like projects need a stable internal port for Caddy to
-	// reverse_proxy to. Allocated once at creation, persisted, never
-	// reassigned. PHP projects get 0 (no dev server).
+	// Scaffolded Node-app types always want an HMR dev server; their
+	// dev_mode is "server" and the command defaults to "dev".
+	// WordPress/Laravel scaffolds don't set up an asset pipeline by
+	// default, so their dev_mode stays empty — users who add Vite/Mix
+	// later can re-detect via `devner reconcile`. Generic PHP isn't
+	// scaffolded (import-only), handled elsewhere.
 	devPort := 0
-	if isNodeLike(req.Type) {
+	devMode := project.DevModeNone
+	devCommand := ""
+	if isDevServerType(req.Type) {
 		p, err := d.Store.AllocateDevPort(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("allocate dev port: %w", err)
 		}
 		devPort = p
+		devMode = project.DevModeServer
+		devCommand = "dev"
 	}
 
 	storedProject := store.Project{
-		Name:      req.Name,
-		Type:      string(req.Type),
-		DBEngine:  req.DBEngine,
-		DBName:    dbName,
-		Domain:    domain,
-		Path:      filepath.Join(d.Config.Stack.ProjectsDir, req.Name),
-		CreatedAt: time.Now(),
-		DevPort:   devPort,
+		Name:       req.Name,
+		Type:       string(req.Type),
+		DBEngine:   req.DBEngine,
+		DBName:     dbName,
+		Domain:     domain,
+		Path:       filepath.Join(d.Config.Stack.ProjectsDir, req.Name),
+		CreatedAt:  time.Now(),
+		DevPort:    devPort,
+		DevMode:    string(devMode),
+		DevCommand: devCommand,
 	}
 	if err := d.Store.UpsertProject(ctx, storedProject); err != nil {
 		return nil, fmt.Errorf("store: %w", err)
@@ -142,10 +151,11 @@ func (d *Deps) ApplyCaddy(ctx context.Context) error {
 	return d.Caddy.Apply(ctx, sites)
 }
 
-// isNodeLike returns true for project types served by a JS runtime dev
-// server rather than by PHP. Keeps the "which types need a dev port"
-// rule in one place.
-func isNodeLike(t project.Type) bool {
+// isDevServerType returns true for freshly-scaffolded types that ship
+// with an HMR dev server (Next, Vite, Astro, Nuxt, SvelteKit, plain
+// Node). Imports use the richer `project.Detect` instead — this helper
+// is only for the scaffold path where we already know the type.
+func isDevServerType(t project.Type) bool {
 	switch t {
 	case project.Node, project.NextJS, project.Nuxt, project.Astro, project.SvelteKit, project.Vite:
 		return true

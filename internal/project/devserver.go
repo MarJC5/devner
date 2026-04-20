@@ -67,10 +67,23 @@ func DefaultCommand(t Type, port int) string {
 	return "pnpm dev"
 }
 
+// WatchCommand returns the command used for DevModeWatch projects
+// (PHP+assets). These don't bind a port — the script just rebuilds on
+// file changes. `script` is the pnpm script name from package.json
+// ("watch" preferred, "dev" fallback for PHP projects whose only asset
+// task is a Vite dev script).
+func WatchCommand(script string) string {
+	if script == "" {
+		script = "watch"
+	}
+	return "pnpm " + script
+}
+
 // Start spawns the dev server. `command` is the shell command to run
-// inside the project dir (e.g. "pnpm dev"). Env vars PORT + HMR polling
-// are prepended automatically so the user's script picks up the
-// allocated port without manual config.
+// inside the project dir (e.g. "pnpm dev" or "pnpm watch"). HMR polling
+// env vars are always injected. PORT is injected only for port > 0 —
+// watch-mode processes don't bind anything and setting PORT to 0 would
+// be confusing.
 //
 // If a dev server for this project is already running, Start is a
 // no-op (returns nil). Call Stop first if you want to replace it.
@@ -86,9 +99,15 @@ func (d *DevServer) Start(ctx context.Context, name string, port int, command st
 		return nil
 	}
 
-	// Build: cd into project, launch with polling + PORT set, detach,
-	// capture both streams to a log file we can tail later.
-	//
+	// Build the env prefix. CHOKIDAR/WATCHPACK polling vars are kept
+	// unconditionally so file-change detection works in Docker Desktop
+	// macOS binds. PORT is only meaningful for HMR servers — watch-mode
+	// asset builders (vite build --watch, rollup -c --watch) ignore it.
+	envPrefix := "CHOKIDAR_USEPOLLING=1 CHOKIDAR_INTERVAL=300 WATCHPACK_POLLING=1"
+	if port > 0 {
+		envPrefix = fmt.Sprintf("PORT=%d %s", port, envPrefix)
+	}
+
 	// We use `setsid` so the new bash process becomes the leader of its
 	// own session + process group. `$!` then holds the PGID, which lets
 	// Stop kill the whole tree (bash → pnpm → vite/next/astro → …)
@@ -99,10 +118,10 @@ func (d *DevServer) Start(ctx context.Context, name string, port int, command st
 mkdir -p /tmp/devner
 cd /var/www/html/%s
 rm -f /tmp/devner/dev-%s.log
-PORT=%d CHOKIDAR_USEPOLLING=1 CHOKIDAR_INTERVAL=300 WATCHPACK_POLLING=1 \
+%s \
   setsid bash -lc %s > /tmp/devner/dev-%s.log 2>&1 < /dev/null &
 echo $! > /tmp/devner/dev-%s.pid
-`, safeName, safeName, port, shellQuoteSingle(command), safeName, safeName)
+`, safeName, safeName, envPrefix, shellQuoteSingle(command), safeName, safeName)
 
 	// `docker exec -d` (detached) is crucial: without -d, the `nohup &`
 	// still dies when the exec session terminates. With -d, docker gives

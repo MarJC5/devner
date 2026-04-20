@@ -30,6 +30,7 @@ func newReconcileCmd() *cobra.Command {
 
 			missingFS := 0
 			staleFS := 0
+			missingPort := 0
 			for _, p := range stored {
 				if _, err := os.Stat(p.Path); err != nil {
 					fmt.Printf("  ! %s: path missing %s\n", p.Name, p.Path)
@@ -40,6 +41,26 @@ func newReconcileCmd() *cobra.Command {
 						} else {
 							fmt.Printf("    → removed from store\n")
 						}
+					}
+					continue
+				}
+				// Heal dev-server projects that never got a port (imports
+				// from before migration 003, or failed allocations).
+				if p.DevMode == string(project.DevModeServer) && p.DevPort == 0 {
+					fmt.Printf("  ! %s: dev_mode=server but dev_port=0\n", p.Name)
+					missingPort++
+					if apply {
+						port, err := d.Store.AllocateDevPort(ctx)
+						if err != nil {
+							fmt.Printf("    port allocation failed: %v\n", err)
+							continue
+						}
+						p.DevPort = port
+						if err := d.Store.UpsertProject(ctx, p); err != nil {
+							fmt.Printf("    update failed: %v\n", err)
+							continue
+						}
+						fmt.Printf("    → allocated port %d\n", port)
 					}
 				}
 			}
@@ -58,8 +79,12 @@ func newReconcileCmd() *cobra.Command {
 					continue
 				}
 				projDir := filepath.Join(d.Config.Stack.ProjectsDir, e.Name())
-				if typ, ok := project.Detect(projDir); ok {
-					fmt.Printf("  ? %s: on disk but not in store (type=%s)\n", e.Name(), typ)
+				if result, ok := project.Detect(projDir); ok {
+					modeSummary := string(result.DevMode)
+					if modeSummary == "" {
+						modeSummary = "none"
+					}
+					fmt.Printf("  ? %s: on disk but not in store (type=%s, mode=%s)\n", e.Name(), result.Type, modeSummary)
 					staleFS++
 					if apply {
 						fmt.Printf("    (use `devner import --source=%s` to register)\n", d.Config.Stack.ProjectsDir)
@@ -76,7 +101,7 @@ func newReconcileCmd() *cobra.Command {
 				}
 			}
 
-			fmt.Printf("\n%d store entries missing files, %d on-disk projects not in store\n", missingFS, staleFS)
+			fmt.Printf("\n%d store entries missing files, %d on-disk projects not in store, %d dev-server projects missing a port\n", missingFS, staleFS, missingPort)
 			if !apply {
 				fmt.Printf("\nRun again with --apply to fix drift.\n")
 			}

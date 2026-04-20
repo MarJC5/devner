@@ -7,14 +7,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDevCmd groups the subcommands that manage per-project Node / Next /
-// Astro / Vite dev servers. Mirror of the agent tools start_dev_server /
-// stop_dev_server / dev_server_status — consistency with other command
-// groups (`devner db …`, `devner hosts …`).
+// newDevCmd groups the subcommands that manage per-project dev-time
+// processes: either an HMR dev server (Node/Next/Astro/Vite/Nuxt/SvelteKit)
+// or an asset watcher running alongside a PHP backend (WordPress /
+// Laravel / generic PHP with Vite, Mix, etc.). The concrete mode is
+// recorded in the project's dev_mode column at import/create time.
 func newDevCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "dev",
-		Short: "Manage per-project Node / Next / Astro / Vite dev servers",
+		Short: "Manage per-project dev servers or asset watchers",
 	}
 	cmd.AddCommand(
 		newDevStartCmd(),
@@ -42,20 +43,36 @@ func newDevStartCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("project %q not found (run `devner list`)", name)
 			}
-			if p.DevPort == 0 {
-				return fmt.Errorf("project %q has no dev port (not a Node/Next/Astro/Vite project)", name)
-			}
-			if command == "" {
-				command = project.DefaultCommand(project.Type(p.Type), p.DevPort)
+			mode := project.DevMode(p.DevMode)
+			switch mode {
+			case project.DevModeNone:
+				return fmt.Errorf("project %q has no dev process configured (library or plain static project). Nothing to start", name)
+			case project.DevModeServer:
+				if p.DevPort == 0 {
+					return fmt.Errorf("project %q is a dev-server project but has no allocated port — run `devner reconcile --apply`", name)
+				}
+				if command == "" {
+					command = project.DefaultCommand(project.Type(p.Type), p.DevPort)
+				}
+			case project.DevModeWatch:
+				if command == "" {
+					command = project.WatchCommand(p.DevCommand)
+				}
+			default:
+				return fmt.Errorf("project %q has unknown dev mode %q", name, p.DevMode)
 			}
 			if err := d.DevServer.Start(cmd.Context(), name, p.DevPort, command); err != nil {
 				return fmt.Errorf("start: %w", err)
 			}
-			fmt.Printf("✓ dev server starting for %s on internal port %d\n", name, p.DevPort)
-			fmt.Printf("  URL     : https://%s\n", p.Domain)
+			if mode == project.DevModeServer {
+				fmt.Printf("✓ dev server starting for %s on internal port %d\n", name, p.DevPort)
+				fmt.Printf("  URL     : https://%s\n", p.Domain)
+			} else {
+				fmt.Printf("✓ asset watcher starting for %s (PHP serves https://%s)\n", name, p.Domain)
+			}
 			fmt.Printf("  Command : %s\n", command)
 			fmt.Printf("  Logs    : devner dev logs %s\n", name)
-			fmt.Printf("\nNote: first build (Next/Astro) can take ~10s before the URL responds.\n")
+			fmt.Printf("\nNote: first build can take ~10s before changes are picked up.\n")
 			return nil
 		},
 	}
@@ -90,7 +107,7 @@ func newDevStopCmd() *cobra.Command {
 func newDevStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status [project]",
-		Short: "Show dev server status (for one project, or all Node-like projects)",
+		Short: "Show dev/watch status for one project or all projects with a configured dev mode",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			d, err := buildDeps()
@@ -108,12 +125,12 @@ func newDevStatusCmd() *cobra.Command {
 					return err
 				}
 				for _, p := range all {
-					if p.DevPort > 0 {
+					if p.DevMode != "" {
 						names = append(names, p.Name)
 					}
 				}
 				if len(names) == 0 {
-					fmt.Println("no Node / Next / Astro / Vite projects")
+					fmt.Println("no projects with a configured dev mode")
 					return nil
 				}
 			}
@@ -123,8 +140,8 @@ func newDevStatusCmd() *cobra.Command {
 					fmt.Printf("  %s  — not in store\n", n)
 					continue
 				}
-				if p.DevPort == 0 {
-					fmt.Printf("  %-20s  (PHP project, no dev server)\n", n)
+				if p.DevMode == "" {
+					fmt.Printf("  %-20s  (no dev process — library or plain PHP)\n", n)
 					continue
 				}
 				st, err := d.DevServer.Status(cmd.Context(), n)
@@ -136,7 +153,14 @@ func newDevStatusCmd() *cobra.Command {
 				if st.Running {
 					mark = fmt.Sprintf("● running (pid=%d)", st.PID)
 				}
-				fmt.Printf("  %-20s  port=%d  %s  https://%s\n", n, p.DevPort, mark, p.Domain)
+				switch p.DevMode {
+				case string(project.DevModeServer):
+					fmt.Printf("  %-20s  mode=server  port=%d  %s  https://%s\n", n, p.DevPort, mark, p.Domain)
+				case string(project.DevModeWatch):
+					fmt.Printf("  %-20s  mode=watch   cmd=%-8s  %s  https://%s\n", n, p.DevCommand, mark, p.Domain)
+				default:
+					fmt.Printf("  %-20s  mode=%s  %s\n", n, p.DevMode, mark)
+				}
 			}
 			return nil
 		},

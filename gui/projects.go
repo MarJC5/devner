@@ -109,10 +109,11 @@ func (a *App) DeleteProject(name string) error {
 
 // ---- Dev server ----
 
-// StartDevServer spawns `pnpm dev` (or user override) in the frankenphp
-// container for a Node-like project. The project's allocated dev port
-// is read from the store. Caddy reverse_proxy is already configured,
-// so the moment the dev server binds the URL works.
+// StartDevServer spawns the project's configured dev-time process:
+// either an HMR dev server (DevMode=server) that Caddy reverse-proxies
+// to, or an asset watcher (DevMode=watch) that runs alongside the PHP
+// backend. The mode was set at import/create time and is read back from
+// the store.
 func (a *App) StartDevServer(name, command string) error {
 	if a.deps == nil {
 		return fmt.Errorf("app deps not initialized")
@@ -121,11 +122,22 @@ func (a *App) StartDevServer(name, command string) error {
 	if err != nil {
 		return fmt.Errorf("project %q not found", name)
 	}
-	if p.DevPort == 0 {
-		return fmt.Errorf("project %q has no dev port (not a Node-like project)", name)
-	}
-	if command == "" {
-		command = project.DefaultCommand(project.Type(p.Type), p.DevPort)
+	switch project.DevMode(p.DevMode) {
+	case project.DevModeNone:
+		return fmt.Errorf("project %q has no dev process configured (library or plain static project)", name)
+	case project.DevModeServer:
+		if p.DevPort == 0 {
+			return fmt.Errorf("project %q is a dev-server project but has no allocated port — run `devner reconcile --apply`", name)
+		}
+		if command == "" {
+			command = project.DefaultCommand(project.Type(p.Type), p.DevPort)
+		}
+	case project.DevModeWatch:
+		if command == "" {
+			command = project.WatchCommand(p.DevCommand)
+		}
+	default:
+		return fmt.Errorf("project %q has unknown dev mode %q", name, p.DevMode)
 	}
 	return a.deps.DevServer.Start(a.ctx, name, p.DevPort, command)
 }

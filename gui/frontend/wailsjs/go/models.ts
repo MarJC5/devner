@@ -272,6 +272,8 @@ export namespace store {
 	    // Go type: time
 	    CreatedAt: any;
 	    DevPort: number;
+	    DevMode: string;
+	    DevCommand: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Project(source);
@@ -287,6 +289,8 @@ export namespace store {
 	        this.Path = source["Path"];
 	        this.CreatedAt = this.convertValues(source["CreatedAt"], null);
 	        this.DevPort = source["DevPort"];
+	        this.DevMode = source["DevMode"];
+	        this.DevCommand = source["DevCommand"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

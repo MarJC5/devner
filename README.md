@@ -64,12 +64,21 @@ devner import --source=~/path/to/old/projects --dry-run
 devner import --source=~/path/to/old/projects
 ```
 
-Detection:
-- `wp-config.php` or `wp-settings.php` → WordPress (sniffs DB_NAME, DB_USER from wp-config.php)
+Detection (priority order — first match wins for Type):
+- `wp-config.php` / `wp-settings.php` → WordPress (sniffs DB_NAME, DB_USER from wp-config.php)
 - `artisan` → Laravel (sniffs DB_DATABASE from `.env`)
+- `index.php` / `public/index.php` / `composer.json` / `.htaccess` with PHP rewrite → PHP (generic, import-only)
 - `astro.config.*` → Astro
 - `next.config.*` → Next.js
-- `package.json` → Node
+- `nuxt.config.*` → Nuxt
+- `svelte.config.*` → SvelteKit
+- `vite.config.*` → Vite
+- `package.json` (fallback) → Node
+
+Dev mode is detected in a second pass by reading `package.json` scripts:
+- **server** — Node-app types with a framework dev script (`vite`, `next dev`, `astro dev`, `nuxi dev`, `nodemon`, …). Gets a reverse-proxy port allocated in [3100, 3999].
+- **watch** — PHP-typed projects (WordPress, Laravel, generic PHP) with a `watch` or `dev` script. Runs alongside FrankenPHP; no port, no Caddy rerouting.
+- **none** — libraries (`package.json` with `main`/`module`/`exports`/`files` and no dev script), plain PHP, static sites. `devner dev start` refuses with a clear message.
 
 ## Commands
 
@@ -88,9 +97,9 @@ devner new <type> <name> [--db=mysql|postgres] [--template=...]
 devner remove <name>
 devner list
 
-devner dev start <name> [--command "..."]           # launch the project's dev server (Node-like only)
+devner dev start <name> [--command "..."]           # launch dev server (Node apps) or asset watcher (PHP+Vite/Mix)
 devner dev stop <name>
-devner dev status [name]
+devner dev status [name]                            # shows mode=server|watch + running/stopped
 devner dev logs <name> [--tail N]
 
 devner db create <mysql|postgres> <name>
@@ -189,7 +198,7 @@ Infomaniak v2 endpoint: `POST /2/ai/{product_id}/openai/v1/chat/completions` —
 For Vue / Svelte / Solid / Qwik / Preact / Lit / vanilla-JS, use `devner new vite myapp --template <tpl>-ts` — no framework-specific devner type needed.
 
 
-PHP projects (WordPress, Laravel) serve directly through FrankenPHP's PHP handler. Node-like projects use a different path:
+PHP projects (WordPress, Laravel, generic PHP) serve directly through FrankenPHP's PHP handler. Node-app projects use a different path:
 
 1. At creation time, devner allocates an internal port in the range **3100–3999** and persists it on the project row (`projects.dev_port` in SQLite).
 2. The rendered Caddyfile emits `reverse_proxy localhost:<port>` for that site instead of `php_server + file_server`.
@@ -218,6 +227,21 @@ open https://myapp.localhost   # HTTP 200, Vite dev server with HMR
 devner dev logs myapp          # tail the dev server output
 devner dev stop myapp          # kill the process group, Caddy → 502
 ```
+
+## PHP projects with an asset pipeline (watch mode)
+
+Many PHP projects (custom CMSes, WordPress themes, Laravel apps) carry a `package.json` for asset compilation (Vite, Tailwind, Laravel Mix). Devner classifies these as `dev_mode=watch` at import time and `devner dev start` launches the asset watcher **alongside** FrankenPHP — the PHP backend keeps serving `https://<name>.localhost`, no reverse-proxy switcheroo.
+
+Detection rule: PHP type + a `watch` script in `package.json` → mode=watch, command=`pnpm watch`. If only `dev` is present, that becomes the command (Vite's dev script on a PHP project is an asset watcher in disguise).
+
+```bash
+devner import --source=~/path/to/projects   # classifies each folder
+devner dev status                           # shows mode=watch / server / none
+devner dev start my-cms                     # runs `pnpm watch` inside frankenphp
+devner dev logs my-cms                      # tails vite build --watch output
+```
+
+Libraries (pure JS packages with `main`/`exports`/`files` and no `dev` script) get `dev_mode=none` — `devner dev start` refuses with a clear message instead of launching a non-existent server.
 
 ## Agent tools
 

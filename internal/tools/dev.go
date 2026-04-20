@@ -20,7 +20,7 @@ type startDevArgs struct {
 
 func (t *StartDevServer) Name() string { return "start_dev_server" }
 func (t *StartDevServer) Description() string {
-	return "Start the dev server (pnpm dev / npm run start) for a Node / Next / Astro / Vite project. Spawns the process in background inside the frankenphp container and lets Caddy reverse_proxy the project's URL to it. No-op if already running."
+	return "Start the project's configured dev-time process. For Node/Next/Astro/Vite apps this is the HMR dev server (reverse-proxied by Caddy). For PHP+assets projects it's the asset watcher (vite build --watch, mix watch, etc.) running alongside FrankenPHP. No-op if already running."
 }
 func (t *StartDevServer) Destructive() bool { return true }
 func (t *StartDevServer) Schema() json.RawMessage {
@@ -28,7 +28,7 @@ func (t *StartDevServer) Schema() json.RawMessage {
   "type":"object",
   "properties":{
     "project":{"type":"string"},
-    "command":{"type":"string","description":"Optional override. Default: 'pnpm dev' for next/astro/vite, 'npm run start' for node."}
+    "command":{"type":"string","description":"Optional override. Default: 'pnpm dev' for server mode, 'pnpm watch' for watch mode."}
   },
   "required":["project"],
   "additionalProperties":false
@@ -43,19 +43,36 @@ func (t *StartDevServer) Execute(ctx context.Context, raw json.RawMessage) (Resu
 	if err != nil {
 		return Result{Content: fmt.Sprintf("project %q not found", a.Project)}, err
 	}
-	if p.DevPort == 0 {
-		return Result{Content: fmt.Sprintf("project %q is not a Node-like project (no dev port)", a.Project)}, fmt.Errorf("no dev port")
-	}
 	cmdStr := a.Command
-	if cmdStr == "" {
-		cmdStr = project.DefaultCommand(project.Type(p.Type), p.DevPort)
+	switch project.DevMode(p.DevMode) {
+	case project.DevModeNone:
+		return Result{Content: fmt.Sprintf("project %q has no dev process configured (library or plain static project)", a.Project)}, fmt.Errorf("no dev mode")
+	case project.DevModeServer:
+		if p.DevPort == 0 {
+			return Result{Content: fmt.Sprintf("project %q is a dev-server project but has no allocated port — run `devner reconcile --apply`", a.Project)}, fmt.Errorf("no dev port")
+		}
+		if cmdStr == "" {
+			cmdStr = project.DefaultCommand(project.Type(p.Type), p.DevPort)
+		}
+	case project.DevModeWatch:
+		if cmdStr == "" {
+			cmdStr = project.WatchCommand(p.DevCommand)
+		}
+	default:
+		return Result{Content: fmt.Sprintf("project %q has unknown dev mode %q", a.Project, p.DevMode)}, fmt.Errorf("unknown dev mode")
 	}
 	if err := t.D.DevServer.Start(ctx, a.Project, p.DevPort, cmdStr); err != nil {
 		return Result{Content: "start failed: " + err.Error()}, err
 	}
+	if p.DevMode == string(project.DevModeServer) {
+		return Result{
+			Content: fmt.Sprintf("✓ dev server starting for %s on internal port %d. URL: https://%s. First build may take ~10s.",
+				a.Project, p.DevPort, p.Domain),
+		}, nil
+	}
 	return Result{
-		Content: fmt.Sprintf("✓ dev server starting for %s on internal port %d. URL: https://%s. First build may take ~10s.",
-			a.Project, p.DevPort, p.Domain),
+		Content: fmt.Sprintf("✓ asset watcher starting for %s (cmd: %s). PHP serves https://%s as usual.",
+			a.Project, cmdStr, p.Domain),
 	}, nil
 }
 
@@ -104,13 +121,13 @@ type devStatusArgs struct {
 
 func (t *DevServerStatus) Name() string { return "dev_server_status" }
 func (t *DevServerStatus) Description() string {
-	return "Show dev server status: running/stopped, PID, port, URL. Pass a project name or call with {} for all Node-like projects."
+	return "Show dev process status: running/stopped, PID, port (server mode) or watch command. Pass a project name or call with {} for all projects with a configured dev mode."
 }
 func (t *DevServerStatus) Destructive() bool { return false }
 func (t *DevServerStatus) Schema() json.RawMessage {
 	return json.RawMessage(`{
   "type":"object",
-  "properties":{"project":{"type":"string","description":"Optional project name. Omit to check all Node-like projects."}},
+  "properties":{"project":{"type":"string","description":"Optional project name. Omit to check all projects with a dev mode."}},
   "additionalProperties":false
 }`)
 }
@@ -131,12 +148,12 @@ func (t *DevServerStatus) Execute(ctx context.Context, raw json.RawMessage) (Res
 			return Result{Content: err.Error()}, err
 		}
 		for _, p := range all {
-			if p.DevPort > 0 {
+			if p.DevMode != "" {
 				names = append(names, p.Name)
 			}
 		}
 		if len(names) == 0 {
-			return Result{Content: "no Node / Next / Astro / Vite projects in store"}, nil
+			return Result{Content: "no projects with a configured dev mode in store"}, nil
 		}
 	}
 
@@ -147,8 +164,8 @@ func (t *DevServerStatus) Execute(ctx context.Context, raw json.RawMessage) (Res
 			out += fmt.Sprintf("- %s: not found\n", n)
 			continue
 		}
-		if p.DevPort == 0 {
-			out += fmt.Sprintf("- %s: not a Node-like project\n", n)
+		if p.DevMode == "" {
+			out += fmt.Sprintf("- %s: no dev process (library or plain PHP)\n", n)
 			continue
 		}
 		st, err := t.D.DevServer.Status(ctx, n)
@@ -156,7 +173,11 @@ func (t *DevServerStatus) Execute(ctx context.Context, raw json.RawMessage) (Res
 		if err == nil && st.Running {
 			state = fmt.Sprintf("running pid=%d", st.PID)
 		}
-		out += fmt.Sprintf("- %s: %s port=%d url=https://%s\n", n, state, p.DevPort, p.Domain)
+		if p.DevMode == string(project.DevModeServer) {
+			out += fmt.Sprintf("- %s: %s mode=server port=%d url=https://%s\n", n, state, p.DevPort, p.Domain)
+		} else {
+			out += fmt.Sprintf("- %s: %s mode=watch cmd=%s url=https://%s\n", n, state, p.DevCommand, p.Domain)
+		}
 	}
 	return Result{Content: out}, nil
 }
