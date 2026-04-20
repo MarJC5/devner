@@ -1,0 +1,85 @@
+version: 2
+
+project_name: devner
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: devner
+    main: ./cmd/devner
+    binary: devner
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE*
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-dev"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+
+release:
+  draft: true
+  github:
+    owner: devner
+    name: devner
+
+# Homebrew tap — uncomment and configure when a tap repo exists.
+# brews:
+#   - name: devner
+#     repository:
+#       owner: devner
+#       name: homebrew-tap
+#     homepage: https://github.com/devner/devner
+#     description: Local dev environment orchestrator with AI agent
+#     license: MIT
+#     install: |
+#       bin.install "devner"
+#     test: |
+#       system "#{bin}/devner", "version"
+
+# Scoop bucket for Windows — uncomment and configure when a bucket exists.
+# scoops:
+#   - repository:
+#       owner: devner
+#       name: scoop-bucket
+#     homepage: https://github.com/devner/devner
+#     description: Local dev environment orchestrator with AI agent
+#     license: MIT

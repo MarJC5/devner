@@ -1,0 +1,10 @@
+{
+	# Enable admin API for dynamic config
+	admin 0.0.0.0:2019
+	frankenphp {
+		worker /var/www/html/index.php
+	}
+}
+
+# Per-project sites are added dynamically via Caddy admin API.
+# See: internal/network/caddy.go
