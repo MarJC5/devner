@@ -26,6 +26,15 @@ type Runtime struct {
 	Stderr      io.Writer
 }
 
+// GetStdoutErr / SetStdoutErr expose the Stdout/Stderr writers via an
+// interface contract so callers that need to temporarily capture output
+// (project.DevServer.execCapture, tui.silenceRuntime) can do so without
+// knowing about the concrete Runtime type.
+func (r *Runtime) GetStdoutErr() (io.Writer, io.Writer) { return r.Stdout, r.Stderr }
+func (r *Runtime) SetStdoutErr(stdout, stderr io.Writer) {
+	r.Stdout, r.Stderr = stdout, stderr
+}
+
 func New(dataDir, projectsDir string) *Runtime {
 	return &Runtime{
 		DataDir:     dataDir,

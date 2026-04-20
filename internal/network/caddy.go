@@ -38,6 +38,10 @@ func NewCaddyClient() *CaddyClient {
 type ProjectSite struct {
 	Domain string // e.g. myapp.localhost
 	Root   string // container-side path, e.g. /var/www/html/myapp/public
+	// DevPort, if non-zero, switches rendering from "php_server + file_server"
+	// to "reverse_proxy localhost:<port>" — used for Node / Next / Astro /
+	// Vite dev servers running inside the frankenphp container.
+	DevPort int
 }
 
 // Apply writes a Caddyfile with one site block per project and restarts
@@ -81,6 +85,21 @@ func renderCaddyfile(sites []ProjectSite) string {
 	b.WriteString("}\n\n")
 
 	for _, s := range sorted {
+		if s.DevPort > 0 {
+			// Node-like site: proxy to the dev server listening on the
+			// allocated internal port. Caddy forwards WebSocket upgrade
+			// headers automatically, so HMR works without extra config.
+			// When the dev server isn't running, Caddy returns 502 —
+			// that's the expected "up but down" signal.
+			fmt.Fprintf(&b, "%s {\n", s.Domain)
+			fmt.Fprintf(&b, "\treverse_proxy localhost:%d {\n", s.DevPort)
+			b.WriteString("\t\ttransport http {\n")
+			b.WriteString("\t\t\tversions 1.1 2\n")
+			b.WriteString("\t\t}\n")
+			b.WriteString("\t}\n")
+			b.WriteString("}\n\n")
+			continue
+		}
 		fmt.Fprintf(&b, "%s {\n", s.Domain)
 		fmt.Fprintf(&b, "\troot * %s\n", s.Root)
 		b.WriteString("\tphp_server\n")

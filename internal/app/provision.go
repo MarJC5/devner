@@ -85,6 +85,19 @@ func (d *Deps) CreateProject(ctx context.Context, req CreateProjectRequest) (*Cr
 	if creds != nil {
 		dbName = creds.Database
 	}
+
+	// Node-like projects need a stable internal port for Caddy to
+	// reverse_proxy to. Allocated once at creation, persisted, never
+	// reassigned. PHP projects get 0 (no dev server).
+	devPort := 0
+	if isNodeLike(req.Type) {
+		p, err := d.Store.AllocateDevPort(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("allocate dev port: %w", err)
+		}
+		devPort = p
+	}
+
 	storedProject := store.Project{
 		Name:      req.Name,
 		Type:      string(req.Type),
@@ -93,6 +106,7 @@ func (d *Deps) CreateProject(ctx context.Context, req CreateProjectRequest) (*Cr
 		Domain:    domain,
 		Path:      filepath.Join(d.Config.Stack.ProjectsDir, req.Name),
 		CreatedAt: time.Now(),
+		DevPort:   devPort,
 	}
 	if err := d.Store.UpsertProject(ctx, storedProject); err != nil {
 		return nil, fmt.Errorf("store: %w", err)
@@ -115,9 +129,21 @@ func (d *Deps) ApplyCaddy(ctx context.Context) error {
 	sites := make([]network.ProjectSite, 0, len(projects))
 	for _, p := range projects {
 		sites = append(sites, network.ProjectSite{
-			Domain: p.Domain,
-			Root:   project.Type(p.Type).DocRoot(p.Name),
+			Domain:  p.Domain,
+			Root:    project.Type(p.Type).DocRoot(p.Name),
+			DevPort: p.DevPort,
 		})
 	}
 	return d.Caddy.Apply(ctx, sites)
+}
+
+// isNodeLike returns true for project types served by a JS runtime dev
+// server rather than by PHP. Keeps the "which types need a dev port"
+// rule in one place.
+func isNodeLike(t project.Type) bool {
+	switch t {
+	case project.Node, project.NextJS, project.Astro, project.Vite:
+		return true
+	}
+	return false
 }

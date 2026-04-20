@@ -21,9 +21,10 @@ const (
 	Node      Type = "node"
 	NextJS    Type = "nextjs"
 	Astro     Type = "astro"
+	Vite      Type = "vite"
 )
 
-var KnownTypes = []Type{WordPress, Laravel, Node, NextJS, Astro}
+var KnownTypes = []Type{WordPress, Laravel, Node, NextJS, Astro, Vite}
 
 func ParseType(s string) (Type, error) {
 	t := Type(strings.ToLower(s))
@@ -44,10 +45,11 @@ func (t Type) DocRoot(name string) string {
 		return base + "/public"
 	case WordPress:
 		return base
-	case Node, NextJS, Astro:
-		// Node-based projects are served via dev server (proxied) or static
-		// build dir. For V1 we serve static `dist`/`out` if present; reverse
-		// proxy to dev server is a V2 improvement.
+	case Node, NextJS, Astro, Vite:
+		// Node-based projects go through Caddy reverse_proxy to their
+		// dev server — DocRoot is unused (Caddy doesn't serve files for
+		// these). Kept for consistency; returned path would only matter
+		// if someone switches the project to static-serve mode.
 		return base
 	}
 	return base
@@ -91,28 +93,37 @@ func (s *Service) Scaffold(ctx context.Context, t Type, name string) error {
 	switch t {
 	case Laravel:
 		return s.Exec.Exec(ctx, "frankenphp", []string{
-			"bash", "-c",
+			"bash", "-lc",
 			fmt.Sprintf("cd /var/www/html && composer create-project laravel/laravel %s", shellEscape(name)),
 		}, false)
 	case WordPress:
 		return s.Exec.Exec(ctx, "frankenphp", []string{
-			"bash", "-c",
+			"bash", "-lc",
 			fmt.Sprintf("cd /var/www/html && mkdir -p %s && cd %s && wp core download --allow-root --locale=en_US", shellEscape(name), shellEscape(name)),
 		}, false)
 	case Node:
 		return s.Exec.Exec(ctx, "frankenphp", []string{
-			"bash", "-c",
+			"bash", "-lc",
 			fmt.Sprintf("cd /var/www/html && mkdir -p %s && cd %s && npm init -y", shellEscape(name), shellEscape(name)),
 		}, false)
 	case NextJS:
 		return s.Exec.Exec(ctx, "frankenphp", []string{
-			"bash", "-c",
+			"bash", "-lc",
 			fmt.Sprintf("cd /var/www/html && pnpm create next-app %s --ts --tailwind --app --no-src-dir --import-alias '@/*' --use-pnpm --yes", shellEscape(name)),
 		}, false)
 	case Astro:
 		return s.Exec.Exec(ctx, "frankenphp", []string{
-			"bash", "-c",
+			"bash", "-lc",
 			fmt.Sprintf("cd /var/www/html && pnpm create astro@latest %s --template minimal --install --no-git --yes", shellEscape(name)),
+		}, false)
+	case Vite:
+		// Defaults to React + TS. Users who want Vue/Svelte/etc. can
+		// pnpm install a different template post-scaffold. Keeping this
+		// non-interactive is the priority.
+		return s.Exec.Exec(ctx, "frankenphp", []string{
+			"bash", "-lc",
+			fmt.Sprintf("cd /var/www/html && pnpm create vite@latest %s --template react-ts && cd %s && pnpm install",
+				shellEscape(name), shellEscape(name)),
 		}, false)
 	}
 	return errors.New("unsupported project type")

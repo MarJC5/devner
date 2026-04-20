@@ -26,6 +26,11 @@ type Project struct {
 	Domain    string
 	Path      string
 	CreatedAt time.Time
+	// DevPort is the internal container port Caddy reverse-proxies to for
+	// Node/Next/Astro/Vite projects. 0 means the project doesn't need one
+	// (PHP, static only). Allocated by AllocateDevPort, persisted, and
+	// never changes for the life of the project.
+	DevPort int
 }
 
 type HostEntry struct {
@@ -67,7 +72,21 @@ func Open(dataDir string) (*Store, error) {
 
 func (s *Store) Close() error { return s.db.Close() }
 
+// migrate applies every .sql file in /migrations that hasn't been run
+// against this database yet. Each applied file is recorded in
+// schema_migrations so re-running the process is a no-op. Migration
+// files can therefore use non-idempotent statements like
+// `ALTER TABLE ... ADD COLUMN`.
 func (s *Store) migrate() error {
+	if _, err := s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			name TEXT PRIMARY KEY,
+			applied_at INTEGER NOT NULL
+		)
+	`); err != nil {
+		return fmt.Errorf("create schema_migrations: %w", err)
+	}
+
 	entries, err := fs.ReadDir(migrations.FS, ".")
 	if err != nil {
 		return err
@@ -79,13 +98,37 @@ func (s *Store) migrate() error {
 		}
 	}
 	sort.Strings(names)
+
+	// Load the set of already-applied migrations.
+	applied := make(map[string]struct{})
+	rows, err := s.db.Query(`SELECT name FROM schema_migrations`)
+	if err != nil {
+		return fmt.Errorf("read schema_migrations: %w", err)
+	}
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			rows.Close()
+			return err
+		}
+		applied[n] = struct{}{}
+	}
+	rows.Close()
+
 	for _, name := range names {
+		if _, ok := applied[name]; ok {
+			continue
+		}
 		data, err := fs.ReadFile(migrations.FS, name)
 		if err != nil {
 			return err
 		}
 		if _, err := s.db.Exec(string(data)); err != nil {
 			return fmt.Errorf("migration %s: %w", name, err)
+		}
+		if _, err := s.db.Exec(`INSERT INTO schema_migrations(name, applied_at) VALUES(?, ?)`,
+			name, time.Now().Unix()); err != nil {
+			return fmt.Errorf("record migration %s: %w", name, err)
 		}
 	}
 	return nil
@@ -95,15 +138,16 @@ func (s *Store) migrate() error {
 
 func (s *Store) UpsertProject(ctx context.Context, p Project) error {
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO projects(name,type,db_engine,db_name,domain,path,created_at)
-		VALUES(?,?,?,?,?,?,?)
+		INSERT INTO projects(name,type,db_engine,db_name,domain,path,created_at,dev_port)
+		VALUES(?,?,?,?,?,?,?,?)
 		ON CONFLICT(name) DO UPDATE SET
 			type=excluded.type,
 			db_engine=excluded.db_engine,
 			db_name=excluded.db_name,
 			domain=excluded.domain,
-			path=excluded.path
-	`, p.Name, p.Type, p.DBEngine, p.DBName, p.Domain, p.Path, p.CreatedAt.Unix())
+			path=excluded.path,
+			dev_port=excluded.dev_port
+	`, p.Name, p.Type, p.DBEngine, p.DBName, p.Domain, p.Path, p.CreatedAt.Unix(), p.DevPort)
 	return err
 }
 
@@ -113,10 +157,10 @@ func (s *Store) DeleteProject(ctx context.Context, name string) error {
 }
 
 func (s *Store) GetProject(ctx context.Context, name string) (*Project, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT name,type,db_engine,db_name,domain,path,created_at FROM projects WHERE name=?`, name)
+	row := s.db.QueryRowContext(ctx, `SELECT name,type,db_engine,db_name,domain,path,created_at,dev_port FROM projects WHERE name=?`, name)
 	var p Project
 	var ts int64
-	if err := row.Scan(&p.Name, &p.Type, &p.DBEngine, &p.DBName, &p.Domain, &p.Path, &ts); err != nil {
+	if err := row.Scan(&p.Name, &p.Type, &p.DBEngine, &p.DBName, &p.Domain, &p.Path, &ts, &p.DevPort); err != nil {
 		return nil, err
 	}
 	p.CreatedAt = time.Unix(ts, 0)
@@ -124,7 +168,7 @@ func (s *Store) GetProject(ctx context.Context, name string) (*Project, error) {
 }
 
 func (s *Store) ListProjects(ctx context.Context) ([]Project, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT name,type,db_engine,db_name,domain,path,created_at FROM projects ORDER BY name`)
+	rows, err := s.db.QueryContext(ctx, `SELECT name,type,db_engine,db_name,domain,path,created_at,dev_port FROM projects ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -133,13 +177,57 @@ func (s *Store) ListProjects(ctx context.Context) ([]Project, error) {
 	for rows.Next() {
 		var p Project
 		var ts int64
-		if err := rows.Scan(&p.Name, &p.Type, &p.DBEngine, &p.DBName, &p.Domain, &p.Path, &ts); err != nil {
+		if err := rows.Scan(&p.Name, &p.Type, &p.DBEngine, &p.DBName, &p.Domain, &p.Path, &ts, &p.DevPort); err != nil {
 			return nil, err
 		}
 		p.CreatedAt = time.Unix(ts, 0)
 		out = append(out, p)
 	}
 	return out, rows.Err()
+}
+
+// DevPortRange bounds the internal-only port space allocated to Node-like
+// projects. 3100 sits above Next.js (3000), MySQL (3306), and stays clear
+// of Vite (5173), Astro (4321), Postgres (5432), Redis (6379), Caddy
+// admin (2019). 3999 is a hard stop — realistic even for prolific users.
+const (
+	DevPortMin = 3100
+	DevPortMax = 3999
+)
+
+// AllocateDevPort returns the smallest free integer in [DevPortMin,
+// DevPortMax] not already assigned to a project. Returns 0 + error if
+// the range is exhausted. Callers persist the returned value on the
+// Project; this function does NOT reserve — two concurrent callers
+// could race and get the same port. Devner's CLI is single-user, so
+// the race is acceptable; if it ever becomes an issue, wrap the
+// allocation + UpsertProject in a transaction.
+func (s *Store) AllocateDevPort(ctx context.Context) (int, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT dev_port FROM projects WHERE dev_port >= ? AND dev_port <= ? ORDER BY dev_port`,
+		DevPortMin, DevPortMax)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	taken := make(map[int]struct{})
+	for rows.Next() {
+		var p int
+		if err := rows.Scan(&p); err != nil {
+			return 0, err
+		}
+		taken[p] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	for p := DevPortMin; p <= DevPortMax; p++ {
+		if _, used := taken[p]; !used {
+			return p, nil
+		}
+	}
+	return 0, fmt.Errorf("dev port range %d-%d exhausted (%d projects)", DevPortMin, DevPortMax, len(taken))
 }
 
 // ----- Hosts -----

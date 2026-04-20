@@ -82,7 +82,7 @@ func (t *CreateProject) Schema() json.RawMessage {
   "type":"object",
   "properties":{
     "name":{"type":"string","description":"Project name. Lowercase letters, digits, hyphens. Must start with a letter."},
-    "type":{"type":"string","enum":["wordpress","laravel","node","nextjs","astro"]},
+    "type":{"type":"string","enum":["wordpress","laravel","node","nextjs","astro","vite"]},
     "db":{"type":"string","enum":["mysql","postgres",""],"description":"Optional database engine."},
     "wp_install":{"type":"boolean","description":"WordPress only: run 'wp core install' after setup so the site is immediately usable."},
     "wp_title":{"type":"string"},

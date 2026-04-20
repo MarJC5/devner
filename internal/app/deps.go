@@ -15,12 +15,13 @@ import (
 )
 
 type Deps struct {
-	Config  *config.Config
-	Store   *store.Store
-	Runtime *runtime.Runtime
-	DB      *database.Manager
-	Project *project.Service
-	Caddy   *network.CaddyClient
+	Config    *config.Config
+	Store     *store.Store
+	Runtime   *runtime.Runtime
+	DB        *database.Manager
+	Project   *project.Service
+	DevServer *project.DevServer
+	Caddy     *network.CaddyClient
 }
 
 func Build() (*Deps, error) {
@@ -34,12 +35,13 @@ func Build() (*Deps, error) {
 	}
 	rt := runtime.New(cfg.Stack.DataDir, cfg.Stack.ProjectsDir)
 	return &Deps{
-		Config:  cfg,
-		Store:   st,
-		Runtime: rt,
-		DB:      database.NewManager(),
-		Project: project.New(rt, cfg.Stack.ProjectsDir),
-		Caddy:   network.NewCaddyClient(),
+		Config:    cfg,
+		Store:     st,
+		Runtime:   rt,
+		DB:        database.NewManager(),
+		Project:   project.New(rt, cfg.Stack.ProjectsDir),
+		DevServer: project.NewDevServer(rt),
+		Caddy:     network.NewCaddyClient(),
 	}, nil
 }
 

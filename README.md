@@ -81,9 +81,14 @@ devner restart [svc]   # restart stack / service
 devner rebuild         # force rebuild images
 devner delete --force  # destroy stack + volumes (DESTRUCTIVE)
 
-devner new <type> <name> [--db=mysql|postgres]
+devner new <type> <name> [--db=mysql|postgres]     # types: wordpress|laravel|node|nextjs|astro|vite
 devner remove <name>
 devner list
+
+devner dev start <name> [--command "..."]           # launch the project's dev server (Node-like only)
+devner dev stop <name>
+devner dev status [name]
+devner dev logs <name> [--tail N]
 
 devner db create <mysql|postgres> <name>
 devner db drop   <mysql|postgres> <name>
@@ -161,6 +166,38 @@ kind        = "openai_compat"
 
 Infomaniak v2 endpoint: `POST /2/ai/{product_id}/openai/v1/chat/completions` — see [docs](https://developer.infomaniak.com/docs/api/post/2/ai/%7Bproduct_id%7D/openai/v1/chat/completions).
 
+## Node / Next / Astro / Vite projects
+
+PHP projects (WordPress, Laravel) serve directly through FrankenPHP's PHP handler. Node-like projects use a different path:
+
+1. At creation time, devner allocates an internal port in the range **3100–3999** and persists it on the project row (`projects.dev_port` in SQLite).
+2. The rendered Caddyfile emits `reverse_proxy localhost:<port>` for that site instead of `php_server + file_server`.
+3. Nothing listens on the port until you run `devner dev start`. Caddy returns **502** meanwhile — that's the "up but dev not running" signal.
+4. `devner dev start <name>` spawns `pnpm dev` (or `npm run start` for plain Node) via `docker exec -d` inside the frankenphp container, under a new session so `devner dev stop` can terminate the whole process group (pnpm → vite/next/astro → …). A PID file lives at `/tmp/devner/dev-<name>.pid`; logs at `/tmp/devner/dev-<name>.log`.
+5. The URL is the same as PHP projects: `https://<name>.localhost`. HTTPS, HMR via WebSocket, everything transparent.
+
+### Port handling per framework
+
+Vite and Astro don't read `PORT` from env by default — devner invokes them as `pnpm dev --port <N>`. Next.js reads `PORT` from env so devner sets it directly. Plain Node projects run `npm run start` and rely on the user's `package.json` honouring the `PORT` env var (conventional). Pass `--command "..."` to `devner dev start` to override.
+
+### Hot reload on macOS + Docker Desktop
+
+Bind-mount file events don't propagate reliably from the host into the container on macOS. Devner sets `CHOKIDAR_USEPOLLING=1`, `CHOKIDAR_INTERVAL=300`, and `WATCHPACK_POLLING=1` when spawning dev servers so chokidar/webpack-style watchers fall back to polling. Costs ~1–3 % of one core for instant HMR reliability. Enable Docker Desktop's VirtioFS file-sharing (Settings > General) if you prefer native fsevents without the polling overhead — the env vars become redundant but harmless.
+
+### Stateless lifecycle
+
+Dev servers die when the frankenphp container restarts (which happens whenever devner applies a new Caddy config — i.e. every `devner new` / `devner remove`). This is **intentional**: devner does not auto-restart them. Run `devner dev start <name>` again when you want it back.
+
+### Quickstart
+
+```bash
+devner new vite myapp          # allocates port, scaffolds pnpm create vite react-ts
+devner dev start myapp         # launches pnpm dev --port <allocated>
+open https://myapp.localhost   # HTTP 200, Vite dev server with HMR
+devner dev logs myapp          # tail the dev server output
+devner dev stop myapp          # kill the process group, Caddy → 502
+```
+
 ## Agent tools
 
 The LLM sees these tools. Destructive ones (marked ⚠) require confirmation in the TUI or `--yes` on the CLI.
@@ -169,9 +206,12 @@ The LLM sees these tools. Destructive ones (marked ⚠) require confirmation in 
 |---|---|
 | `list_projects` | list managed projects |
 | `project_status` | details for one project |
-| `create_project` | scaffold wordpress / laravel / node / nextjs / astro |
+| `create_project` | scaffold wordpress / laravel / node / nextjs / astro / vite |
 | `delete_project` ⚠ | remove files + DB + Caddy entry |
 | `create_database` | mysql or postgres DB + user |
+| `start_dev_server` ⚠ | launch pnpm dev / npm run start for a Node-like project |
+| `stop_dev_server` ⚠ | stop the dev server |
+| `dev_server_status` | running/stopped + PID + port |
 | `drop_database` ⚠ | drop DB + user |
 | `start_stack` / `stop_stack` | lifecycle |
 | `rebuild_stack` ⚠ | rebuild images + recreate |

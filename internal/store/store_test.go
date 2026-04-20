@@ -50,6 +50,53 @@ func TestProjectsCRUD(t *testing.T) {
 	}
 }
 
+func TestAllocateDevPort(t *testing.T) {
+	s, err := Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+
+	// Empty store → first port.
+	p1, err := s.AllocateDevPort(ctx)
+	if err != nil {
+		t.Fatalf("alloc 1: %v", err)
+	}
+	if p1 != DevPortMin {
+		t.Errorf("first alloc = %d, want %d", p1, DevPortMin)
+	}
+
+	// Persist two projects taking 3100 and 3102 — 3101 should be the gap.
+	insert := func(name string, port int) {
+		if err := s.UpsertProject(ctx, Project{
+			Name: name, Type: "nextjs", Domain: name + ".localhost",
+			Path: "/tmp/" + name, CreatedAt: time.Unix(1, 0), DevPort: port,
+		}); err != nil {
+			t.Fatalf("upsert %s: %v", name, err)
+		}
+	}
+	insert("a", DevPortMin)
+	insert("b", DevPortMin+2)
+
+	p2, err := s.AllocateDevPort(ctx)
+	if err != nil {
+		t.Fatalf("alloc 2: %v", err)
+	}
+	if p2 != DevPortMin+1 {
+		t.Errorf("gap alloc = %d, want %d", p2, DevPortMin+1)
+	}
+
+	// Round-trip DevPort through Get / List.
+	got, err := s.GetProject(ctx, "b")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.DevPort != DevPortMin+2 {
+		t.Errorf("roundtrip dev_port = %d, want %d", got.DevPort, DevPortMin+2)
+	}
+}
+
 func TestHistoryAppend(t *testing.T) {
 	tmp := t.TempDir()
 	s, err := Open(tmp)
