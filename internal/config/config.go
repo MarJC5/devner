@@ -28,6 +28,10 @@ type ProviderConfig struct {
 	APIKeyEnv string `mapstructure:"api_key_env"`
 	Model     string `mapstructure:"model"`
 	Kind      string `mapstructure:"kind"` // openai_compat | anthropic
+	// ProductID is provider-specific. Infomaniak requires it in the
+	// URL path (".../1/ai/<product_id>/openai/..."). Substituted into
+	// BaseURL at Provider build time wherever "{product_id}" appears.
+	ProductID string `mapstructure:"product_id"`
 }
 
 // Load reads the config file from the OS-standard location
@@ -88,10 +92,14 @@ func applyDefaults(v *viper.Viper, home string) {
 	v.SetDefault("stack.projects_dir", filepath.Join(home, "devner", "projects"))
 	v.SetDefault("llm.active_provider", "infomaniak")
 
-	v.SetDefault("llm.providers.infomaniak.base_url", "https://api.infomaniak.com/1/ai/openai/v1")
+	// Infomaniak AI Tools (OpenAI-compatible). The product_id is required
+	// and substituted into base_url at provider build time. See:
+	// https://developer.infomaniak.com/docs/api/post/2/ai/%7Bproduct_id%7D/openai/v1/chat/completions
+	v.SetDefault("llm.providers.infomaniak.base_url", "https://api.infomaniak.com/2/ai/{product_id}/openai/v1")
 	v.SetDefault("llm.providers.infomaniak.api_key_env", "INFOMANIAK_API_KEY")
 	v.SetDefault("llm.providers.infomaniak.model", "mixtral")
 	v.SetDefault("llm.providers.infomaniak.kind", "openai_compat")
+	v.SetDefault("llm.providers.infomaniak.product_id", "")
 
 	v.SetDefault("llm.providers.anthropic.api_key_env", "ANTHROPIC_API_KEY")
 	v.SetDefault("llm.providers.anthropic.model", "claude-opus-4-7")
@@ -122,10 +130,15 @@ projects_dir = "%s/devner/projects"
 # Must match one of the [llm.providers.*] names below.
 active_provider = "infomaniak"
 
+# Infomaniak AI Tools — OpenAI-compatible (v2 endpoint).
+# Required: set product_id from https://manager.infomaniak.com (or
+# GET /1/ai) and export the token in the env var named by api_key_env.
+# See https://developer.infomaniak.com/docs/api/post/2/ai/{product_id}/openai/v1/chat/completions
 [llm.providers.infomaniak]
-base_url    = "https://api.infomaniak.com/1/ai/openai/v1"
+base_url    = "https://api.infomaniak.com/2/ai/{product_id}/openai/v1"
 api_key_env = "INFOMANIAK_API_KEY"
-model       = "mixtral"
+product_id  = ""               # <— put your Infomaniak AI Tools product ID here
+model       = "mixtral"        # mixtral | qwen3 | llama3 | ... (GET /1/ai/models)
 kind        = "openai_compat"
 
 [llm.providers.anthropic]
