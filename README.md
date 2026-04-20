@@ -49,7 +49,9 @@ devner new laravel myapp --db=mysql
 devner tui
 
 # 4. Ask the agent (Infomaniak by default)
-export INFOMANIAK_API_KEY=xxx
+#    First-run: edit ~/Library/Application Support/devner/config.toml,
+#    set product_id and api_key under [llm.providers.infomaniak].
+devner models                                             # sanity check auth
 devner agent "create a Next.js project called web and show me logs"
 ```
 
@@ -95,13 +97,14 @@ devner reconcile [--apply]             # fix drift: store ↔ FS ↔ Caddy
 devner certs status
 devner certs install                   # mkcert -install
 
+devner models                          # list models of the active LLM provider
 devner agent "<prompt>"                # one-shot agent call
 devner tui                             # interactive TUI
 ```
 
 ## Configuration
 
-Config file location:
+The config file is created automatically on first run at the OS-standard location:
 
 | OS | Path |
 |---|---|
@@ -109,7 +112,7 @@ Config file location:
 | Linux | `~/.config/devner/config.toml` |
 | Windows | `%AppData%\devner\config.toml` |
 
-Defaults:
+Template (generated on first run, safe to edit):
 ```toml
 [stack]
 data_dir     = "~/.devner"
@@ -118,10 +121,17 @@ projects_dir = "~/devner/projects"
 [llm]
 active_provider = "infomaniak"
 
+# Infomaniak AI Tools — OpenAI-compatible (v2 endpoint).
+# Get your product_id from https://manager.infomaniak.com (AI Tools)
+# or GET /1/ai with your token.
 [llm.providers.infomaniak]
-base_url    = "https://api.infomaniak.com/1/ai/openai/v1"
+base_url    = "https://api.infomaniak.com/2/ai/{product_id}/openai/v1"
+# Use either api_key (token in the file) OR api_key_env (env var name).
+# api_key wins if both are set.
+api_key     = ""
 api_key_env = "INFOMANIAK_API_KEY"
-model       = "mixtral"
+product_id  = ""
+model       = "qwen3"
 kind        = "openai_compat"
 
 [llm.providers.anthropic]
@@ -129,11 +139,27 @@ api_key_env = "ANTHROPIC_API_KEY"
 model       = "claude-opus-4-7"
 kind        = "anthropic"
 
+# Local Ollama — no API key needed.
 [llm.providers.ollama]
 base_url    = "http://localhost:11434/v1"
 model       = "qwen2.5-coder:14b"
 kind        = "openai_compat"
 ```
+
+### Infomaniak setup
+
+1. Get your product ID: `curl -H "Authorization: Bearer $TOKEN" https://api.infomaniak.com/1/ai`
+2. Put the product ID and the token in `config.toml` under `[llm.providers.infomaniak]`.
+3. Verify connectivity and list available models:
+   ```bash
+   devner models
+   ```
+4. Run the agent:
+   ```bash
+   devner agent "list my projects"
+   ```
+
+Infomaniak v2 endpoint: `POST /2/ai/{product_id}/openai/v1/chat/completions` — see [docs](https://developer.infomaniak.com/docs/api/post/2/ai/%7Bproduct_id%7D/openai/v1/chat/completions).
 
 ## Agent tools
 
