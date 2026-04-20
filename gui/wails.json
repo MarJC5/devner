@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "devner-gui",
+  "outputfilename": "Devner",
+  "frontend:install": "pnpm install",
+  "frontend:build": "pnpm build",
+  "frontend:dev:watcher": "pnpm dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Martin Jean-Christio",
+    "email": "hello@misits.ch"
+  },
+  "info": {
+    "companyName": "Devner",
+    "productName": "Devner",
+    "productVersion": "0.1.0",
+    "copyright": "",
+    "comments": "Local dev environment orchestrator"
+  }
+}

@@ -1,0 +1,386 @@
+package cli
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/devner/devner/internal/app"
+	"github.com/devner/devner/internal/database"
+	"github.com/devner/devner/internal/network"
+	"github.com/devner/devner/internal/project"
+	"github.com/spf13/cobra"
+)
+
+// registerCommands attaches the full Phase 1 command tree to the root.
+func registerCommands(root *cobra.Command) {
+	root.AddCommand(
+		newNewCmd(),
+		newRemoveCmd(),
+		newPSCmd(),
+		newLogsCmd(),
+		newRestartCmd(),
+		newDBCmd(),
+		newHostsCmd(),
+		newRebuildCmd(),
+		newDeleteCmd(),
+		newImportCmd(),
+		newReconcileCmd(),
+		newCertsCmd(),
+		newAgentCmd(),
+		newModelsCmd(),
+		newShellCmd(),
+		newOpenCmd(),
+		newCodeCmd(),
+		newZedCmd(),
+		newCursorCmd(),
+		newPromptCmd(),
+		newDevCmd(),
+		newGuiCmd(),
+		newMenubarCmd(),
+	)
+}
+
+// ---- new ----
+
+func newNewCmd() *cobra.Command {
+	var dbEngine string
+	var template string
+	var wpInstall bool
+	var wpTitle, wpAdmin, wpPass, wpEmail string
+
+	cmd := &cobra.Command{
+		Use:   "new <type> <name>",
+		Short: "Create a new project (wordpress|laravel|node|nextjs|nuxt|astro|sveltekit|vite)",
+		Long: `Creates a new project with one command:
+  - scaffold (composer, wp, pnpm create next/nuxt/astro/svelte/vite, ...)
+  - optional database + user (--db=mysql|postgres)
+  - framework wiring (.env for Laravel, wp-config.php for WordPress)
+  - port allocation + Caddy reverse_proxy + HTTPS for Node-like projects
+
+Templates (for --template):
+  - vite:       react-ts (default) | vue-ts | svelte-ts | solid-ts | preact-ts | qwik-ts | lit-ts | vanilla-ts
+  - astro:      minimal (default) | basics | blog | portfolio | starlight
+  - sveltekit:  skeleton (default) | minimal | demo
+
+For WordPress, pass --wp-install to run 'wp core install' too.`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			typ, err := project.ParseType(args[0])
+			if err != nil {
+				return err
+			}
+			name := args[1]
+
+			d, err := buildDeps()
+			if err != nil {
+				return err
+			}
+			defer d.Close()
+
+			fmt.Printf("→ scaffolding %s project %q\n", typ, name)
+			if dbEngine != "" {
+				fmt.Printf("→ provisioning %s database + framework config\n", dbEngine)
+			}
+			if wpInstall {
+				fmt.Printf("→ running 'wp core install'\n")
+			}
+
+			res, err := d.CreateProject(cmd.Context(), app.CreateProjectRequest{
+				Name:       name,
+				Type:       typ,
+				DBEngine:   dbEngine,
+				Template:   template,
+				WPInstall:  wpInstall,
+				WPTitle:    wpTitle,
+				WPAdmin:    wpAdmin,
+				WPPassword: wpPass,
+				WPEmail:    wpEmail,
+			})
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("\n✓ %s ready at https://%s\n", res.Project.Name, res.Project.Domain)
+			if res.DBCreds != nil {
+				fmt.Printf("  DB: %s / %s   user=%s   host=%s:%d\n",
+					dbEngine, res.DBCreds.Database, res.DBCreds.User, res.DBCreds.Host, res.DBCreds.Port)
+			}
+			if wpInstall {
+				admin := wpAdmin
+				if admin == "" {
+					admin = "admin"
+				}
+				pass := wpPass
+				if pass == "" {
+					pass = "admin"
+				}
+				fmt.Printf("  WP admin: %s / %s\n", admin, pass)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&dbEngine, "db", "", "database engine: mysql | postgres")
+	cmd.Flags().StringVar(&template, "template", "", "scaffold template (Vite / Astro / SvelteKit only)")
+	cmd.Flags().BoolVar(&wpInstall, "wp-install", false, "run wp core install (WordPress only)")
+	cmd.Flags().StringVar(&wpTitle, "wp-title", "", "WordPress site title (default: project name)")
+	cmd.Flags().StringVar(&wpAdmin, "wp-admin", "", "WordPress admin username (default: admin)")
+	cmd.Flags().StringVar(&wpPass, "wp-password", "", "WordPress admin password (default: admin)")
+	cmd.Flags().StringVar(&wpEmail, "wp-email", "", "WordPress admin email (default: admin@localhost.test)")
+	return cmd
+}
+
+// ---- remove ----
+
+func newRemoveCmd() *cobra.Command {
+	var keepFiles bool
+	cmd := &cobra.Command{
+		Use:   "remove <name>",
+		Short: "Delete a project (files, database, hosts entry)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := args[0]
+			if err := project.ValidateName(name); err != nil {
+				return err
+			}
+			d, err := buildDeps()
+			if err != nil {
+				return err
+			}
+			defer d.Store.Close()
+			ctx := cmd.Context()
+
+			p, err := d.Store.GetProject(ctx, name)
+			if err != nil {
+				return fmt.Errorf("project %q not found in store", name)
+			}
+
+			if p.DBEngine != "" && p.DBName != "" {
+				fmt.Printf("→ dropping %s database %q\n", p.DBEngine, p.DBName)
+				if err := d.DB.Drop(ctx, database.Engine(p.DBEngine), p.DBName); err != nil {
+					fmt.Printf("  (warning) drop db: %v\n", err)
+				}
+			}
+			if !keepFiles {
+				fmt.Printf("→ removing files %s\n", p.Path)
+				if err := d.Project.Remove(ctx, name); err != nil {
+					fmt.Printf("  (warning) remove files: %v\n", err)
+				}
+			}
+			if err := d.Store.DeleteProject(ctx, name); err != nil {
+				return fmt.Errorf("store delete: %w", err)
+			}
+			if err := applyCaddySites(ctx, d); err != nil {
+				fmt.Printf("  (warning) caddy apply: %v\n", err)
+			}
+			fmt.Printf("✓ removed %s\n", name)
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&keepFiles, "keep-files", false, "do not delete project files")
+	return cmd
+}
+
+// ---- ps ----
+
+func newPSCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "ps",
+		Short: "Show stack container status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			d, err := buildDeps()
+			if err != nil {
+				return err
+			}
+			defer d.Store.Close()
+			return d.Runtime.PS(cmd.Context())
+		},
+	}
+}
+
+// ---- logs ----
+
+func newLogsCmd() *cobra.Command {
+	var tail int
+	var follow bool
+	cmd := &cobra.Command{
+		Use:   "logs <service>",
+		Short: "Show logs for a stack service",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			d, err := buildDeps()
+			if err != nil {
+				return err
+			}
+			defer d.Store.Close()
+			return d.Runtime.Logs(cmd.Context(), args[0], tail, follow)
+		},
+	}
+	cmd.Flags().IntVar(&tail, "tail", 100, "number of lines")
+	cmd.Flags().BoolVarP(&follow, "follow", "f", false, "follow log output")
+	return cmd
+}
+
+// ---- restart ----
+
+func newRestartCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "restart [service]",
+		Short: "Restart stack (or one service)",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			d, err := buildDeps()
+			if err != nil {
+				return err
+			}
+			defer d.Store.Close()
+			svc := ""
+			if len(args) == 1 {
+				svc = args[0]
+			}
+			return d.Runtime.Restart(cmd.Context(), svc)
+		},
+	}
+}
+
+// ---- rebuild ----
+
+func newRebuildCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "rebuild",
+		Short: "Rebuild images and recreate containers",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			d, err := buildDeps()
+			if err != nil {
+				return err
+			}
+			defer d.Store.Close()
+			return d.Runtime.Rebuild(cmd.Context())
+		},
+	}
+}
+
+// ---- delete ----
+
+func newDeleteCmd() *cobra.Command {
+	var force bool
+	cmd := &cobra.Command{
+		Use:   "delete",
+		Short: "Delete stack containers and volumes (destructive)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !force {
+				return fmt.Errorf("refusing to delete without --force (all data will be lost)")
+			}
+			d, err := buildDeps()
+			if err != nil {
+				return err
+			}
+			defer d.Store.Close()
+			return d.Runtime.Delete(cmd.Context())
+		},
+	}
+	cmd.Flags().BoolVar(&force, "force", false, "confirm destructive delete")
+	return cmd
+}
+
+// ---- db ----
+
+func newDBCmd() *cobra.Command {
+	cmd := &cobra.Command{Use: "db", Short: "Database operations"}
+	cmd.AddCommand(
+		&cobra.Command{
+			Use:   "create <engine> <name>",
+			Short: "Create database + user (engine: mysql|postgres)",
+			Args:  cobra.ExactArgs(2),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				d, err := buildDeps()
+				if err != nil {
+					return err
+				}
+				defer d.Store.Close()
+				creds, err := d.DB.Create(cmd.Context(), database.Engine(args[0]), args[1])
+				if err != nil {
+					return err
+				}
+				fmt.Printf("✓ %s/%s\n  user=%s\n  password=%s\n", args[0], creds.Database, creds.User, creds.Password)
+				return nil
+			},
+		},
+		&cobra.Command{
+			Use:   "drop <engine> <name>",
+			Short: "Drop database + user",
+			Args:  cobra.ExactArgs(2),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				d, err := buildDeps()
+				if err != nil {
+					return err
+				}
+				defer d.Store.Close()
+				return d.DB.Drop(cmd.Context(), database.Engine(args[0]), args[1])
+			},
+		},
+	)
+	return cmd
+}
+
+// ---- hosts ----
+
+func newHostsCmd() *cobra.Command {
+	cmd := &cobra.Command{Use: "hosts", Short: "Manage /etc/hosts entries"}
+	cmd.AddCommand(
+		&cobra.Command{
+			Use:   "add <domain> [target]",
+			Short: "Add hosts entry (no-op for *.localhost)",
+			Args:  cobra.RangeArgs(1, 2),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				target := "127.0.0.1"
+				if len(args) == 2 {
+					target = args[1]
+				}
+				hm, err := network.NewHostsManager()
+				if err != nil {
+					return err
+				}
+				added, err := hm.Add(args[0], target)
+				if err != nil {
+					return err
+				}
+				if !added {
+					fmt.Printf("no-op: %s resolves natively or already present\n", args[0])
+					return nil
+				}
+				if err := hm.Save(); err != nil {
+					return err
+				}
+				fmt.Printf("✓ %s → %s\n", args[0], target)
+				return nil
+			},
+		},
+		&cobra.Command{
+			Use:   "remove <domain>",
+			Short: "Remove hosts entry",
+			Args:  cobra.ExactArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				hm, err := network.NewHostsManager()
+				if err != nil {
+					return err
+				}
+				removed, err := hm.Remove(args[0])
+				if err != nil {
+					return err
+				}
+				if !removed {
+					fmt.Printf("no-op: %s not present\n", args[0])
+					return nil
+				}
+				return hm.Save()
+			},
+		},
+	)
+	return cmd
+}
+
+// applyCaddySites pushes the current list of projects to Caddy. Thin
+// wrapper around app.Deps.ApplyCaddy kept here so cli callers read naturally.
+func applyCaddySites(ctx context.Context, d *Deps) error {
+	return d.ApplyCaddy(ctx)
+}

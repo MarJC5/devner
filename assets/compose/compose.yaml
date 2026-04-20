@@ -1,0 +1,121 @@
+networks:
+  default:
+    name: devner
+
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit_devner
+    tty: true
+    restart: unless-stopped
+    environment:
+      TZ: "${TZ:-Europe/Zurich}"
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  frankenphp:
+    build:
+      context: ${DEVNER_DATA_DIR}/dockerfiles/frankenphp
+      dockerfile: Dockerfile
+    container_name: frankenphp_devner
+    restart: unless-stopped
+    environment:
+      TZ: "${TZ:-Europe/Zurich}"
+    # Only HTTP(S) is exposed to the host. Dev servers listen on
+    # internal ports (3100-3999, allocated per project) and are
+    # reached through Caddy's reverse_proxy at https://<name>.localhost
+    # — no need to publish those ports. The Caddy admin API (2019)
+    # stays container-local too; reloads go through `docker restart`,
+    # not the admin API.
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DEVNER_PROJECTS_DIR}:/var/www/html/
+      - ${DEVNER_DATA_DIR}/frankenphp/Caddyfile:/etc/frankenphp/Caddyfile
+      - ${DEVNER_DATA_DIR}/frankenphp/php.ini:/usr/local/etc/php/php.ini
+      - caddy_data:/data
+      - caddy_config:/config
+    tty: true
+    depends_on:
+      - mysql
+      - postgres
+      - mailpit
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    tty: true
+    container_name: mysql_devner
+    platform: "linux/x86_64"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_USER: devner
+      MYSQL_PASSWORD: devner
+      MYSQL_ROOT_PASSWORD: devner
+      TZ: "${TZ:-Europe/Zurich}"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-pdevner"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgis/postgis:14-3.5
+    restart: unless-stopped
+    tty: true
+    container_name: postgres_devner
+    platform: "linux/x86_64"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: devner
+      POSTGRES_PASSWORD: devner
+      POSTGRES_DB: devner
+      TZ: "${TZ:-Europe/Zurich}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devner"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    container_name: adminer_devner
+    tty: true
+    environment:
+      ADMINER_PLUGINS: "tables-filter tinymce json-column dump-zip"
+      ADMINER_DEFAULT_SERVER: mysql
+      TZ: "${TZ:-Europe/Zurich}"
+
+  redis:
+    image: redis:alpine
+    container_name: redis_devner
+    tty: true
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  mysql_data:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

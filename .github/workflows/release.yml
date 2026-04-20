@@ -1,0 +1,151 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  # CLI + devner-menubar are built by GoReleaser — pure Go, no CGO,
+  # so a single Ubuntu runner cross-compiles all three target OSes.
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # GUI (Wails) build matrix. Wails needs the OS's native WebView
+  # (WKWebView on macOS, WebView2 on Windows, WebKitGTK on Linux),
+  # so each OS must build on its own runner — cross-compilation is
+  # not supported. Artifacts are attached to the same release created
+  # by the `cli` job (softprops/action-gh-release matches by tag).
+  gui:
+    needs: cli
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            package: macos
+          - os: macos-13
+            goos: darwin
+            goarch: amd64
+            package: macos
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            package: linux
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            package: windows
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: gui
+    steps:
+      - uses: actions/checkout@v4
+        # fetch-depth 0 so `git describe` in the Wails info plist
+        # version string has tag history to work with.
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+          cache-dependency-path: gui/go.sum
+
+      # WebKitGTK is not preinstalled on ubuntu-latest. libnss3 is
+      # pulled in too because some Wails builds reference it; harmless
+      # if unused. macOS and Windows have all the bits natively.
+      - name: Install Linux WebView deps
+        if: matrix.package == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libnss3
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: gui/frontend/pnpm-lock.yaml
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build GUI
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: wails build -platform ${{ matrix.goos }}/${{ matrix.goarch }} -clean
+
+      # Menubar daemon — CGO (Cocoa / WinAPI) so it must compile on
+      # its native runner. Skipped on Linux until the appindicator
+      # story is sorted. Output lives next to the GUI artifacts so
+      # the "Attach artifact to release" step picks it up.
+      - name: Build menubar daemon
+        if: matrix.package == 'macos' || matrix.package == 'windows'
+        working-directory: ${{ github.workspace }}
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        shell: bash
+        run: |
+          mkdir -p gui/build/bin
+          ext=""
+          if [ "${{ matrix.goos }}" = "windows" ]; then ext=".exe"; fi
+          out="gui/build/bin/devner-menubar_${{ matrix.goos }}_${{ matrix.goarch }}${ext}"
+          go build -ldflags="-s -w" -o "$out" ./cmd/devner-menubar
+          echo "✓ $out"
+
+      # Wails emits `devner-gui.app` (macOS) / `devner-gui` / `.exe`.
+      # We rename to "Devner" for user-facing consistency (the CLI's
+      # `devner gui` also looks under both names).
+      - name: Package (macOS)
+        if: matrix.package == 'macos'
+        run: |
+          cd build/bin
+          mv devner-gui.app Devner.app
+          ditto -c -k --keepParent Devner.app "Devner_${{ matrix.goos }}_${{ matrix.goarch }}.zip"
+
+      - name: Package (Linux)
+        if: matrix.package == 'linux'
+        run: |
+          cd build/bin
+          tar czf "Devner_linux_amd64.tar.gz" devner-gui
+
+      - name: Package (Windows)
+        if: matrix.package == 'windows'
+        shell: pwsh
+        run: |
+          cd build/bin
+          Compress-Archive -Path devner-gui.exe -DestinationPath "Devner_windows_amd64.zip"
+
+      - name: Attach artifact to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            gui/build/bin/Devner_*.*
+            gui/build/bin/devner-menubar_*
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

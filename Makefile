@@ -1,120 +1,90 @@
-# COLORS
-GREEN		= \033[1;32m
-RED 		= \033[1;31m
-ORANGE		= \033[1;33m
-CYAN		= \033[1;36m
-RESET		= \033[0m
+# Devner Makefile — convenience targets around `go build` and `goreleaser`.
+# The runtime itself uses docker compose directly; this Makefile is only for
+# building, testing, and releasing the Go binary.
 
-# FOLDER
-SRCS_DIR	= ./
-DOCKER_DIR	= ${SRCS_DIR}docker-compose.yml
+BIN          := devner
+OUT          := bin/$(BIN)
+PKG          := ./cmd/devner
+VERSION      ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT       := $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
+DATE         := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS      := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)
+INSTALL_DIR  ?= /usr/local/bin
 
-# VARIABLES
-ENV_FILE	= ${SRCS_DIR}.env
+GOOS_LIST    := darwin linux windows
+GOARCH_LIST  := amd64 arm64
 
-# COMMANDS
-DOCKER		=  docker compose -f ${DOCKER_DIR} -p devner
+.PHONY: help build build-menubar build-all-bins run test vet tidy fmt install uninstall clean build-all release-snapshot release gui-dev gui-build gui-clean
 
-%:
-	@:
+help: ## Show this help
+	@awk 'BEGIN {FS = ":.*##"; printf "Devner — make targets\n\nUsage: make <target>\n\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-all: up
+build: ## Build the CLI binary into ./bin/devner
+	@mkdir -p bin
+	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $(OUT) $(PKG)
+	@echo "✓ $(OUT) ($(VERSION))"
 
-up:
-	@echo "${GREEN}Starting containers...${RESET}"
-	@${DOCKER} up -d --remove-orphans
+build-menubar: ## Build the macOS menubar daemon into ./bin/devner-menubar (native only — CGO required for Cocoa/systray)
+	@mkdir -p bin
+	go build -ldflags="-s -w" -o bin/devner-menubar ./cmd/devner-menubar
+	@echo "✓ bin/devner-menubar"
 
-down:
-	@echo "${RED}Stopping containers...${RESET}"
-	@${DOCKER} down
+build-all-bins: build build-menubar ## Build CLI + menubar side by side
 
-stop:
-	@echo "${RED}Stopping containers...${RESET}"
-	@${DOCKER} stop
+run: build ## Build and run the TUI
+	$(OUT) tui
 
-rebuild:
-	@echo "${GREEN}Rebuilding containers...${RESET}"
-	@${DOCKER} up -d --remove-orphans --build
+test: ## Run the full test suite
+	go test ./...
 
-nocache:
-	@echo "${GREEN}Rebuilding containers...${RESET}"
-	@${DOCKER} build --no-cache
-	@${DOCKER} up -d --remove-orphans
+vet: ## go vet
+	go vet ./...
 
-delete:
-	@echo "${RED}Deleting containers...${RESET}"
-	@${DOCKER} down -v --remove-orphans
+tidy: ## go mod tidy
+	go mod tidy
 
-run:
-	@echo "${GREEN}Running command...${RESET}"
-	@${DOCKER} exec -w /var/www/html$(CURRENT_DIR) frankenphp bash
+fmt: ## gofmt -w
+	gofmt -w .
 
-node:
-	@echo "${GREEN}Entering node container...${RESET}"
-	@${DOCKER} exec -w /var/www/html$(CURRENT_DIR) frankenphp bash
+install: build ## Build and copy the binary into $(INSTALL_DIR) (may need sudo)
+	install -m 0755 $(OUT) $(INSTALL_DIR)/$(BIN)
+	@echo "✓ installed to $(INSTALL_DIR)/$(BIN)"
 
-frankenphp:
-	@echo "${GREEN}Entering frankenphp container...${RESET}"
-	@${DOCKER} exec -w /var/www/html$(CURRENT_DIR) frankenphp bash
+uninstall: ## Remove the installed binary from $(INSTALL_DIR)
+	rm -f $(INSTALL_DIR)/$(BIN)
 
-wp:
-	@echo "${GREEN}Running wp-cli...${RESET}"
-	@${DOCKER} exec -it frankenphp wp --path=/var/www/html/${project_name} ${wp_args} --allow-root
+clean: ## Remove build artifacts
+	rm -rf bin dist
 
-reload:
-	@echo "${GREEN}Restarting frankenphp container...${RESET}"
-	@${DOCKER} restart frankenphp
+build-all: ## Cross-compile for darwin/linux/windows × amd64/arm64
+	@mkdir -p bin
+	@for os in $(GOOS_LIST); do \
+		for arch in $(GOARCH_LIST); do \
+			if [ "$$os" = "windows" ] && [ "$$arch" = "arm64" ]; then continue; fi; \
+			ext=""; [ "$$os" = "windows" ] && ext=".exe"; \
+			out="bin/$(BIN)-$$os-$$arch$$ext"; \
+			echo "→ $$out"; \
+			GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o $$out $(PKG) || exit 1; \
+		done; \
+	done
+	@echo "✓ cross-builds done"
 
-mysql:
-	@echo "${GREEN}Entering mysql container...${RESET}"
-	@${DOCKER} exec mysql bash
+release-snapshot: ## Run GoReleaser in snapshot mode (no tag, no push)
+	goreleaser release --snapshot --clean
 
-new-mysql:
-	@echo "${GREEN}Creating new mysql database...${RESET}"
-	@${DOCKER} exec mysql bash -c "./create.sh ${database_name} ${database_user} ${database_password}"
+release: ## Run GoReleaser for real (requires a git tag and GITHUB_TOKEN)
+	goreleaser release --clean
 
-remove-mysql:
-	@echo "${RED}Removing mysql database...${RESET}"
-	@${DOCKER} exec mysql bash -c "./remove.sh ${database_name} ${database_user}"
+# ---- GUI (Wails + React) ------------------------------------------------
+# Wails CLI is expected on PATH. If missing:
+#   go install github.com/wailsapp/wails/v2/cmd/wails@latest
+# And ensure $(go env GOPATH)/bin is on PATH.
 
-check-mysql:
-	@echo "${GREEN}Checking mysql database...${RESET}"
-	@${DOCKER} exec mysql bash -c "./check.sh ${database_name} ${database_user}"
+gui-dev: ## Launch the Wails GUI in dev mode (hot reload Vite + Go rebuild on save)
+	cd gui && PATH="$$(go env GOPATH)/bin:$$PATH" wails dev
 
-postgres:
-	@echo "${GREEN}Entering postgres container...${RESET}"
-	@${DOCKER} exec postgres bash
+gui-build: ## Build the Wails GUI production bundle (gui/build/bin/devner-gui(.app/.exe/…))
+	cd gui && PATH="$$(go env GOPATH)/bin:$$PATH" wails build
 
-new-postgres:
-	@echo "${GREEN}Creating new postgres database...${RESET}"
-	@${DOCKER} exec postgres bash -c "./create.sh ${database_name} ${database_user} ${database_password}"
-
-remove-postgres:
-	@echo "${RED}Removing postgres database...${RESET}"
-	@${DOCKER} exec postgres bash -c "./remove.sh ${database_name} ${database_user}"
-
-check-postgres:
-	@echo "${GREEN}Checking postgres database...${RESET}"
-	@${DOCKER} exec postgres bash -c "./check.sh ${database_name} ${database_user}"
-
-enable-postgis:
-	@echo "${GREEN}Enabling PostGIS extension...${RESET}"
-	@${DOCKER} exec postgres bash -c "psql -U devner -d ${database_name} -c 'CREATE EXTENSION IF NOT EXISTS postgis;'"
-
-new-wp:
-	@echo "${GREEN}Creating new wordpress project...${RESET}"
-	@$(DOCKER) exec frankenphp bash -c "wp core download --path=${project_name} --locale=fr_FR --allow-root"
-
-new-laravel:
-	@echo "${GREEN}Creating new laravel project...${RESET}"
-	@$(DOCKER) exec frankenphp bash -c "composer create-project --prefer-dist laravel/laravel ${project_name}"
-
-remove:
-	@echo "${RED}Removing project...${RESET}"
-	@$(DOCKER) exec frankenphp bash -c "rm -rf ${project_name}"
-
-dev:
-	@echo "${GREEN}Opening devner...${RESET}"
-	@code .
-
-.PHONY: all start up down stop rebuild delete
+gui-clean: ## Remove the GUI build artifacts
+	rm -rf gui/build/bin gui/frontend/dist gui/frontend/wailsjs
