@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"fyne.io/systray"
+
+	"github.com/devner/devner/internal/sysenv"
 )
 
 //go:embed tray_icon.png
@@ -49,6 +51,12 @@ func setupLogging() {
 
 func main() {
 	setupLogging()
+	// macOS-only: if the daemon is registered as a Login Item, launchd
+	// gives it a stripped PATH that excludes /usr/local/bin where the
+	// Docker Desktop `docker` symlink lives. statusLoop()'s
+	// `docker ps` poll would otherwise always print "docker
+	// unavailable".
+	sysenv.EnsureDevPath()
 	devnerBin = resolveDevnerBin()
 	log.Printf("menubar start: devnerBin=%q", devnerBin)
 	systray.Run(onReady, onExit)

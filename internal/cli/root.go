@@ -80,7 +80,13 @@ func newUpCmd() *cobra.Command {
 				return err
 			}
 			defer d.Store.Close()
-			return d.Runtime.Up(cmd.Context())
+			if err := d.Runtime.Up(cmd.Context()); err != nil {
+				return err
+			}
+			// Rewrite the Caddyfile so infra routes (adminer.localhost,
+			// mailpit.localhost) and any existing project sites are
+			// applied on boot — not only after `devner new`.
+			return d.ApplyCaddy(cmd.Context())
 		},
 	}
 }

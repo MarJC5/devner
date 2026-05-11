@@ -6,6 +6,11 @@ dist/
 .env
 .DS_Store
 
+# TLS material (Caddy-issued local certs, mkcert output, etc.)
+*.pem
+*.key
+*.crt
+
 # Client projects: WordPress / Laravel sites. Never commit.
 projects/
 

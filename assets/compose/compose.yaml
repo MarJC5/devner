@@ -10,9 +10,11 @@ services:
     restart: unless-stopped
     environment:
       TZ: "${TZ:-Europe/Zurich}"
+    # SMTP (1025) is published for apps that send to localhost:1025. The web
+    # UI (8025) is reached via Caddy at https://mailpit.localhost — no host
+    # port needed.
     ports:
       - "1025:1025"
-      - "8025:8025"
 
   frankenphp:
     build:
@@ -92,6 +94,7 @@ services:
     restart: unless-stopped
     container_name: adminer_devner
     tty: true
+    # Reached via Caddy at https://adminer.localhost — no host port needed.
     environment:
       ADMINER_PLUGINS: "tables-filter tinymce json-column dump-zip"
       ADMINER_DEFAULT_SERVER: mysql

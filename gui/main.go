@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 
+	"github.com/devner/devner/internal/sysenv"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -14,6 +15,12 @@ import (
 var assets embed.FS
 
 func main() {
+	// macOS-only: when launched as a .app via LaunchServices the PATH
+	// is stripped down to /usr/bin:/bin:/usr/sbin:/sbin, which hides
+	// `docker` (lives in /usr/local/bin via Docker Desktop). Restore
+	// the dev paths before anything shells out.
+	sysenv.EnsureDevPath()
+
 	app := NewApp()
 
 	err := wails.Run(&options.App{

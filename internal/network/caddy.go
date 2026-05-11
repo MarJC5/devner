@@ -70,6 +70,18 @@ func (c *CaddyClient) Apply(ctx context.Context, sites []ProjectSite) error {
 	return nil
 }
 
+// infraSites lists stack-level services that Caddy should expose under
+// *.localhost in addition to user projects. Services are reached through
+// Docker's internal DNS — `<service>:<port>` resolves because frankenphp
+// shares the `devner` compose network.
+var infraSites = []struct {
+	Domain string
+	Target string
+}{
+	{"adminer.localhost", "adminer:8080"},
+	{"mailpit.localhost", "mailpit:8025"},
+}
+
 // renderCaddyfile produces a Caddyfile covering the global admin block plus
 // one site block per project. Sites are sorted for deterministic output.
 func renderCaddyfile(sites []ProjectSite) string {
@@ -83,6 +95,12 @@ func renderCaddyfile(sites []ProjectSite) string {
 	b.WriteString("\tadmin 0.0.0.0:2019\n")
 	b.WriteString("\tfrankenphp\n")
 	b.WriteString("}\n\n")
+
+	for _, s := range infraSites {
+		fmt.Fprintf(&b, "%s {\n", s.Domain)
+		fmt.Fprintf(&b, "\treverse_proxy %s\n", s.Target)
+		b.WriteString("}\n\n")
+	}
 
 	for _, s := range sorted {
 		if s.DevPort > 0 {
